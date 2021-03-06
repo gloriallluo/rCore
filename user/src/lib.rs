@@ -12,10 +12,12 @@ mod lang_items;
 #[link_section = ".text.entry"]
 pub extern "C" fn _start() -> ! {
     clear_bss();
-    exit(main());
+    exit(main());   // exit user program and tell app manager
     panic!("unreachable after sys_exit!");
 }
 
+// weak linkage:
+// if `main` found in `bin` directory, use that
 #[linkage = "weak"]
 #[no_mangle]
 fn main() -> i32 {
