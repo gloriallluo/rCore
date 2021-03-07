@@ -9,6 +9,8 @@ mod console;
 mod lang_items;
 mod sbi;
 mod batch;
+mod trap;
+mod syscall;
 
 // 将 .bss 段清零
 fn clear_bss() {
@@ -26,24 +28,9 @@ global_asm!(include_str!("link_app.S"));
 
 #[no_mangle]
 pub extern "C" fn rust_main() {
-    extern "C" {
-        fn stext();
-        fn etext();
-        fn srodata();
-        fn erodata();
-        fn sdata();
-        fn edata();
-        fn sbss();
-        fn ebss();
-        fn boot_stack();
-        fn boot_stack_top();
-    }
     clear_bss();
-    trace!("Hello, world!");
-    info!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-    debug!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-    warn!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-    error!("boot_stack [{:#x}, {:#x})", boot_stack as usize, boot_stack_top as usize);
-    println!(".bss [{:#x}, {:#x})", sbss as usize, ebss as usize);
-    panic!("Shutdown machine!");
+    println!("[kernel] Hello, world!");
+    trap::init();
+    batch::init();
+    batch::run_next_app();
 }

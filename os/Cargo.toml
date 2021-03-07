@@ -13,5 +13,5 @@ panic = "abort"
 panic = "abort"
 
 [dependencies]
-riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] } d
+riscv = { git = "ssh://git@github.com/rcore-os/riscv.git", features = ["inline-asm"] }
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
