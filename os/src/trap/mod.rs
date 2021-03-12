@@ -24,7 +24,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
             cx.sepc += 4; // execute the next instruction after return
-            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
+            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]], cx) as usize;
         }
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) => {
