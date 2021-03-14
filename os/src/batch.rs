@@ -13,7 +13,7 @@ const KERNEL_STACK_SIZE: usize = 8 * 1024;
 
 struct AppManagerInner {
     num_app: usize,
-    former_app: usize,
+    next_app: usize,
     app_start: [usize; MAX_APP_NUM + 1]
 }
 
@@ -32,7 +32,7 @@ lazy_static! {
             let mut app_start: [usize; MAX_APP_NUM + 1] = [0; MAX_APP_NUM + 1];
             let app_start_raw: &[usize] = unsafe { from_raw_parts(num_app_ptr.add(1), num_app + 1) };
             app_start[..=num_app].copy_from_slice(app_start_raw);
-            AppManagerInner { num_app, former_app: 0, app_start }
+            AppManagerInner { num_app, next_app: 0, app_start }
         })
     };
 }
@@ -45,14 +45,14 @@ impl AppManagerInner {
                   i, self.app_start[i], self.app_start[i + 1]);
         }
     }
-    pub fn get_former_app(&self) -> usize {
-        self.former_app
+    pub fn get_next_app(&self) -> usize {
+        self.next_app
     }
     pub fn move_to_next_app(&mut self) {
-        self.former_app += 1;
+        self.next_app += 1;
     }
     pub fn current_app_size(&self) -> usize {
-        self.app_start[self.former_app] - self.app_start[self.former_app - 1]
+        self.app_start[self.next_app] - self.app_start[self.next_app - 1]
     }
     unsafe fn load_app(&self, app_id: usize) {
         if app_id >= self.num_app {
@@ -95,8 +95,8 @@ pub fn current_app_space() -> Range<usize> {
 
 pub fn run_next_app() -> ! {
     // load new app into user memory (8040_0000) and increase the app ptr
-    let former_app = APP_MANAGER.inner.borrow().get_former_app();
-    unsafe { APP_MANAGER.inner.borrow().load_app(former_app); }
+    let next_app = APP_MANAGER.inner.borrow().get_next_app();
+    unsafe { APP_MANAGER.inner.borrow().load_app(next_app); }
     APP_MANAGER.inner.borrow_mut().move_to_next_app();
 
     // run `__restore`

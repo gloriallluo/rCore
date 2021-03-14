@@ -16,6 +16,10 @@ fn insert_app_data() -> Result<()> {
     let mut apps: Vec<_> = read_dir("../user/build/elf/")
         .unwrap()
         .into_iter()
+        .filter(|dir_entry| {
+            let name_with_ext = dir_entry.as_ref().unwrap().file_name().into_string().unwrap();
+            name_with_ext.find('.').unwrap() != 0
+        })
         .map(|dir_entry| {
             let mut name_with_ext = dir_entry.unwrap().file_name().into_string().unwrap();
             // println!("{}", name_with_ext);
