@@ -3,6 +3,7 @@
 #![feature(llvm_asm)]
 #![feature(global_asm)]
 #![feature(panic_info_message)]     // 获取 panic 信息并打印
+#![feature(const_in_array_repeat_expressions)]
 
 #[macro_use]
 mod console;

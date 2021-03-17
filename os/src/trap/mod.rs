@@ -1,11 +1,10 @@
 use riscv::register::{
-    mtvec::TrapMode,
-    stvec,
-    scause::{self, Trap, Exception},
-    stval
+    mtvec::TrapMode, stvec, scause::{self, Trap, Interrupt, Exception}, stval
 };
 use crate::trap::context::TrapContext;
-// use crate::batch::run_next_app;
+use crate::task::{
+    exit_current_and_run_next, suspend_current_and_run_next
+};
 use crate::syscall::syscall;
 
 pub mod context;
@@ -29,16 +28,19 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) => {
             println!("[kernel] Store Page Fault in application, core dumped.");
-            // run_next_app();
+            exit_current_and_run_next();
         },
         Trap::Exception(Exception::LoadFault) |
         Trap::Exception(Exception::LoadPageFault) => {
             println!("[kernel] Load Page Fault in application, core dumped.");
-            // run_next_app();
+            exit_current_and_run_next();
         },
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, core dumped.");
-            // run_next_app();
+            exit_current_and_run_next();
+        },
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            suspend_current_and_run_next();
         },
         _ => {
             panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);

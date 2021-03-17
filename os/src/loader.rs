@@ -12,14 +12,12 @@ struct UserStack {
     data: [u8; USER_STACK_SIZE]
 }
 
-pub static KERNEL_STACK: [KernelStack; MAX_APP_NUM] = [
-    KernelStack { data: [0; KERNEL_STACK_SIZE], };
-    MAX_APP_NUM
+static KERNEL_STACK: [KernelStack; MAX_APP_NUM] = [
+    KernelStack { data: [0; KERNEL_STACK_SIZE] }; MAX_APP_NUM
 ];
 
-pub static USER_STACK: [UserStack; MAX_APP_NUM] = [
-    UserStack { data: [0; USER_STACK_SIZE], };
-    MAX_APP_NUM
+static USER_STACK: [UserStack; MAX_APP_NUM] = [
+    UserStack { data: [0; USER_STACK_SIZE] }; MAX_APP_NUM
 ];
 
 impl KernelStack {
@@ -85,7 +83,8 @@ pub fn load_apps() {
 
 pub fn init_app_cx(app_id: usize) -> &'static TaskContext {
     KERNEL_STACK[app_id].push_context(
-        TrapContext::app_init_context(get_base_i(app_id), USER_STACK[app_id].get_sp()),
-        TaskContext::goto_restore(),
+        TrapContext::app_init_context(
+            get_base_i(app_id), USER_STACK[app_id].get_sp()),
+        TaskContext::goto_restore()
     )
 }
