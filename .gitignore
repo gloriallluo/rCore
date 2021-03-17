@@ -5,6 +5,7 @@
 debug/
 target/
 tools/
+/os/src/link_app.S
 user/src/bin/
 user/build/
 
