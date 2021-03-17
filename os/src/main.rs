@@ -8,9 +8,11 @@
 mod console;
 mod lang_items;
 mod sbi;
-mod batch;
 mod trap;
 mod syscall;
+mod loader;
+mod config;
+mod task;
 
 // 将 .bss 段清零
 fn clear_bss() {
@@ -31,6 +33,4 @@ pub extern "C" fn rust_main() {
     clear_bss();
     println!("[kernel] Hello, world!");
     trap::init();
-    batch::init();
-    batch::run_next_app();
 }
