@@ -2,21 +2,22 @@ pub mod context;
 mod task;
 mod switch;
 
-use crate::config::MAX_APP_NUM;
-use crate::loader::{get_num_app, init_app_cx};
+use crate::config::{MAX_APP_NUM, APP_SIZE_LIMIT};
+use crate::loader::{get_num_app, init_app_cx, get_base_i, USER_STACK};
 use core::cell::RefCell;
 use lazy_static::*;
 use crate::task::switch::__switch;
 use crate::task::task::{TaskControlBlock, TaskStatus};
+use core::ops::Range;
 
 pub struct TaskManager {
     num_app: usize,
-    inner: RefCell<TaskManagerInner>,
+    inner: RefCell<TaskManagerInner>
 }
 
 struct TaskManagerInner {
     tasks: [TaskControlBlock; MAX_APP_NUM],
-    current_task: usize,
+    current_task: usize
 }
 
 unsafe impl Sync for TaskManager {}
@@ -46,12 +47,11 @@ impl TaskManager {
         self.inner.borrow_mut().tasks[0].task_status = TaskStatus::Running;
         let next_task_cx_ptr2 = self.inner.borrow().tasks[0].get_task_cx_ptr2();
         let _unused: usize = 0;
-        unsafe {
-            __switch(
-                &_unused as *const _,
-                next_task_cx_ptr2
-            );
-        }
+        unsafe { __switch(&_unused as *const _, next_task_cx_ptr2); }
+    }
+
+    fn get_current_task(&self) -> usize {
+        self.inner.borrow().current_task
     }
 
     fn mark_current_suspended(&self) {
@@ -84,13 +84,8 @@ impl TaskManager {
             inner.current_task = next;
             let current_task_cx_ptr2 = inner.tasks[current].get_task_cx_ptr2();
             let next_task_cx_ptr2 = inner.tasks[next].get_task_cx_ptr2();
-            core::mem::drop(inner);
-            unsafe {
-                __switch(
-                    current_task_cx_ptr2,
-                    next_task_cx_ptr2,
-                );
-            }
+            core::mem::drop(inner); // drop 掉 inner 可变引用
+            unsafe { __switch(current_task_cx_ptr2, next_task_cx_ptr2); }
         } else {
             panic!("All applications completed!");
         }
@@ -121,4 +116,14 @@ pub fn suspend_current_and_run_next() {
 pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
+}
+
+pub fn current_app_space() -> Range<usize> {
+    let base = get_base_i(TASK_MANAGER.get_current_task());
+    base..base + APP_SIZE_LIMIT
+}
+
+pub fn current_user_stack_top() -> usize {
+    let current_task = TASK_MANAGER.get_current_task();
+    USER_STACK[current_task].get_sp()
 }
