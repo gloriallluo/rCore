@@ -8,7 +8,7 @@ use crate::task::{
 const FD_STDOUT: usize = 1;
 
 pub fn sys_write(fd: usize, buf: *const u8, len: usize, cx: &TrapContext) -> isize {
-    // security check
+    // // security check
     let app_range = current_app_space();
     let in_app_range = app_range.contains(&(buf as usize)) &&
         app_range.contains(&(buf as usize + len));
@@ -16,6 +16,10 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize, cx: &TrapContext) -> isi
     let in_stack_range = stack_range.contains(&(buf as usize)) &&
         stack_range.contains(&(buf as usize + len));
     if (!in_app_range) && (!in_stack_range) {
+        // error!("fs security check not pass, buf: {:x?} \n\
+        //     in app range: {:x?}, app range: {:x?},\n\
+        //     in stack range: {:x?}, stack range: {:x?}",
+        //        buf as usize, in_app_range, app_range, in_stack_range, stack_range);
         return -1 as isize;
     }
 

@@ -3,6 +3,7 @@ use super::write;
 
 struct Stdout;
 
+const STDIN: usize = 0;
 const STDOUT: usize = 1;
 
 impl Write for Stdout {

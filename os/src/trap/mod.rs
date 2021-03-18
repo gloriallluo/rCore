@@ -1,9 +1,14 @@
 use riscv::register::{
-    mtvec::TrapMode, stvec, scause::{self, Trap, Interrupt, Exception}, stval, sie
+    mtvec::TrapMode,
+    stvec,
+    scause::{self, Trap, Interrupt, Exception},
+    stval,
+    sie
 };
 use crate::trap::context::TrapContext;
 use crate::task::{
-    exit_current_and_run_next, suspend_current_and_run_next
+    exit_current_and_run_next,
+    suspend_current_and_run_next
 };
 use crate::syscall::syscall;
 use crate::timer::set_next_trigger;
@@ -32,16 +37,19 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) => {
-            println!("[kernel] Store Page Fault in application, core dumped.");
+            println!("[kernel] Store Page Fault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
+                     stval, cx.sepc);
             exit_current_and_run_next();
         },
         Trap::Exception(Exception::LoadFault) |
         Trap::Exception(Exception::LoadPageFault) => {
-            println!("[kernel] Load Page Fault in application, core dumped.");
+            println!("[kernel] Load Page Fault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
+                     stval, cx.sepc);
             exit_current_and_run_next();
         },
         Trap::Exception(Exception::IllegalInstruction) => {
-            println!("[kernel] IllegalInstruction in application, core dumped.");
+            println!("[kernel] Illegal Instruction in application, bad instruction = {:#x}, core dumped.",
+                     stval);
             exit_current_and_run_next();
         },
         Trap::Interrupt(Interrupt::SupervisorTimer) => {

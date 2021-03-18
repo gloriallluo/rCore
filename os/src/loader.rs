@@ -71,14 +71,10 @@ pub fn load_apps() {
             (addr as *mut u8).write_volatile(0)
         });
         // load app from data section to memory
-        let src = unsafe {
-            core::slice::from_raw_parts(
-                app_start[i] as *const u8, app_start[i + 1] - app_start[i])
-        };
-        let dst = unsafe {
-            core::slice::from_raw_parts_mut(
-                base_i as *mut u8, src.len())
-        };
+        let src = unsafe { core::slice::from_raw_parts(
+                app_start[i] as *const u8, app_start[i + 1] - app_start[i]) };
+        let dst = unsafe { core::slice::from_raw_parts_mut(
+                base_i as *mut u8, src.len()) };
         dst.copy_from_slice(src);
     }
 }
