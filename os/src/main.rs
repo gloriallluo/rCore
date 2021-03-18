@@ -14,6 +14,7 @@ mod syscall;
 mod loader;
 mod config;
 mod task;
+mod timer;
 
 // 将 .bss 段清零
 fn clear_bss() {
@@ -34,4 +35,9 @@ pub extern "C" fn rust_main() {
     clear_bss();
     println!("[kernel] Hello, world!");
     trap::init();
+    loader::load_apps();
+    trap::enable_timer_interrupt();
+    timer::set_next_trigger();
+    task::run_first_task();
+    panic!("Unreachable in rust_main!");
 }

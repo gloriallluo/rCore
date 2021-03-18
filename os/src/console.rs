@@ -1,4 +1,4 @@
-use crate::sbi::sys_putchar;
+use crate::sbi::sbi_putchar;
 use core::fmt::{self, Write};
 
 struct Stdout;
@@ -6,7 +6,7 @@ struct Stdout;
 impl Write for Stdout {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for c in s.chars() {
-            sys_putchar(c as usize);
+            sbi_putchar(c as usize);
         }
         Ok(())
     }
