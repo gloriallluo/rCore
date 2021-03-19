@@ -1,10 +1,15 @@
-use crate::task::{exit_current_and_run_next, suspend_current_and_run_next, set_current_priority};
+use crate::task::{
+    exit_current_and_run_next,
+    suspend_current_and_run_next,
+    set_current_priority,
+    get_current_task
+};
 use crate::timer::{TimeVal, get_time_val};
 
 pub fn sys_exit(exit_code: i32) -> ! {
-    info!("[kernel] Application exited with code {}", exit_code);
+    info!("[kernel] Application {} exited with code {}", get_current_task(), exit_code);
     exit_current_and_run_next();
-    panic!("Unreachable in sys_exit!");
+    panic!("Application {}: Unreachable in sys_exit!", get_current_task());
 }
 
 pub fn sys_yield() -> isize {

@@ -9,7 +9,7 @@ impl TaskContext {
         extern "C" { fn __restore(); }
         Self {
             ra: __restore as usize,
-            s: [0; 12],
+            s: [0; 12]
         }
     }
 }
