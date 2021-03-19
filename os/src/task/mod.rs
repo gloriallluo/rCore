@@ -66,28 +66,28 @@ impl TaskManager {
     }
 
     fn set_current_priority(&self, pri: usize) {
-        let mut inner = self.inner.borrow_mut();
+        let inner = self.inner.borrow();
         if let Some(mut current) = inner.current_task {
             current.set_priority(pri)
         } else { panic!("no current task"); }
     }
 
     fn mark_current_suspended(&self) {
-        let mut inner = self.inner.borrow_mut();
+        let inner = self.inner.borrow();
         if let Some(mut current) = inner.current_task {
             current.task_status = TaskStatus::Ready;
         } else { panic!("no current task"); }
     }
 
     fn mark_current_exited(&self) {
-        let mut inner = self.inner.borrow_mut();
+        let inner = self.inner.borrow();
         if let Some(mut current) = inner.current_task {
             current.task_status = TaskStatus::Exited;
         } else { panic!("no current task"); }
     }
 
     fn find_next_task(&self) -> Option<TaskControlBlock> {
-        let inner = self.inner.borrow();
+        let mut inner = self.inner.borrow_mut();
         while !inner.tasks.is_empty() {
             let task = inner.tasks.pop().unwrap();
             if task.task_status == TaskStatus::Ready {

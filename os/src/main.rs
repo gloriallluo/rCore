@@ -2,7 +2,8 @@
 #![no_main]
 #![feature(llvm_asm)]
 #![feature(global_asm)]
-#![feature(panic_info_message)]     // 获取 panic 信息并打印
+#![feature(panic_info_message)] // 获取 panic 信息并打印
+#![feature(alloc_error_handler)] // alloc 错误处理
 #![feature(const_in_array_repeat_expressions)]
 
 #[macro_use]
@@ -15,6 +16,7 @@ mod loader;
 mod config;
 mod task;
 mod timer;
+mod memory;
 
 extern crate alloc;
 
@@ -36,6 +38,7 @@ global_asm!(include_str!("link_app.S"));
 pub extern "C" fn rust_main() {
     clear_bss();
     println!("[kernel] Hello, world!");
+    memory::init();
     trap::init();
     loader::load_apps();
     trap::enable_timer_interrupt();
