@@ -16,6 +16,8 @@ mod config;
 mod task;
 mod timer;
 
+extern crate alloc;
+
 // 将 .bss 段清零
 fn clear_bss() {
     extern "C" {
