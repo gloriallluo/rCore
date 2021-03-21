@@ -6,6 +6,7 @@ pub const APP_BASE_ADDRESS: usize = 0x8040_0000;
 pub const APP_SIZE_LIMIT: usize = 0x20000;
 pub const CLOCK_FREQ: usize = 1250_0000;
 pub const BIG_STRIDE: usize = 0x1000_0000;
+pub const TIME_COUNT_THRESHOLD: usize = 5000;
 
 // config for k-210
 // pub const CLOCK_FREQ: usize = 403000000 / 62;

@@ -46,7 +46,7 @@ __restore:
     csrw    sstatus, t0
     csrw    sepc, t1
     csrw    sscratch, t2
-    # restore general-purpuse registers except sp/tp
+    # restore general-purpose registers except sp/tp
     ld      x1, 1*8(sp)
     ld      x3, 3*8(sp)
     .set n, 5

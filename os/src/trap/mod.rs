@@ -6,10 +6,7 @@ use riscv::register::{
     sie
 };
 use crate::trap::context::TrapContext;
-use crate::task::{
-    exit_current_and_run_next,
-    suspend_current_and_run_next
-};
+use crate::task::{exit_current_and_run_next, suspend_current_and_run_next, update_time_counter};
 use crate::syscall::syscall;
 use crate::timer::set_next_trigger;
 
@@ -53,6 +50,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             exit_current_and_run_next();
         },
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            update_time_counter();
             set_next_trigger();
             suspend_current_and_run_next();
         },

@@ -9,7 +9,7 @@ const USEC_PER_SEC: usize = 1000_000;
 #[derive(Copy, Clone, Debug)]
 pub struct TimeVal {
     pub sec: usize,
-    pub usec: usize,
+    pub usec: usize
 }
 
 pub fn get_time() -> usize {

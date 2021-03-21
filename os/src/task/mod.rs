@@ -2,11 +2,12 @@ pub mod context;
 mod task;
 mod switch;
 
-use crate::config::{MAX_APP_NUM, APP_SIZE_LIMIT, BIG_STRIDE};
+use crate::config::{MAX_APP_NUM, APP_SIZE_LIMIT, BIG_STRIDE, TIME_COUNT_THRESHOLD};
 use crate::loader::{get_num_app, init_app_cx, get_base_i, USER_STACK};
 use core::cell::{RefCell};
+use core::convert::TryInto;
 use core::ops::Range;
-use alloc::collections::binary_heap::BinaryHeap;
+use core::mem::drop;
 use lazy_static::*;
 use crate::task::switch::__switch;
 use crate::task::task::{TaskControlBlock, TaskStatus};
@@ -17,8 +18,8 @@ pub struct TaskManager {
 }
 
 struct TaskManagerInner {
-    tasks: BinaryHeap<TaskControlBlock>,
-    current_task: TaskControlBlock
+    tasks: [TaskControlBlock; MAX_APP_NUM],
+    current_task: usize
 }
 
 unsafe impl Sync for TaskManager {}
@@ -26,23 +27,24 @@ unsafe impl Sync for TaskManager {}
 lazy_static! {
     pub static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
-        if num_app > MAX_APP_NUM { panic!("[kernel] Too many apps!"); }
-        let mut tasks: BinaryHeap<TaskControlBlock> = BinaryHeap::new();
-        for i in 0..num_app {
-            tasks.push(TaskControlBlock {
-                index: i,
-                task_cx_ptr: init_app_cx(i) as *const _ as usize,
-                task_status: TaskStatus::Ready,
+        let mut tasks = [
+            TaskControlBlock {
+                task_cx_ptr: 0,
+                task_status: TaskStatus::UnInit,
                 pass: 0,
                 stride: BIG_STRIDE / 16,
-                priority: 16
-            });
+                priority: 16,
+                count_time: 0
+            }; MAX_APP_NUM
+        ];
+        for i in 0..num_app {
+            tasks[i].task_cx_ptr = init_app_cx(i) as *const _ as usize;
+            tasks[i].task_status = TaskStatus::Ready;
         }
-        let current_task = tasks.pop().unwrap();
         TaskManager {
             num_app,
             inner: RefCell::new(TaskManagerInner {
-                tasks, current_task
+                tasks, current_task: 0
             })
         }
     };
@@ -51,76 +53,74 @@ lazy_static! {
 impl TaskManager {
     fn run_first_task(&self) {
         let mut inner = self.inner.borrow_mut();
-        // info!("Run Application {}...", inner.current_task.index);
-        inner.current_task.task_status = TaskStatus::Running;
-        inner.current_task.update_pass();
-        let next_task_cx_ptr2 = inner.current_task.get_task_cx_ptr2();
+        inner.tasks[0].task_status = TaskStatus::Running;
+        inner.tasks[0].update_pass();
+        let next_task_cx_ptr2 = inner.tasks[0].get_task_cx_ptr2();
         let _unused: usize = 0;
-        core::mem::drop(inner); // drop 掉 inner 可变引用
+        drop(inner);
         unsafe { __switch(&_unused as *const _, next_task_cx_ptr2); }
     }
 
     fn get_current_task(&self) -> usize {
-        let inner = self.inner.borrow();
-        inner.current_task.index
+        self.inner.borrow().current_task
     }
 
     fn set_current_priority(&self, pri: usize) {
+        let current = self.inner.borrow().current_task;
         let mut inner = self.inner.borrow_mut();
-        inner.current_task.set_priority(pri);
+        inner.tasks[current].set_priority(pri);
+    }
+
+    fn update_time_counter(&self) {
+        let current = self.inner.borrow().current_task;
+        self.inner.borrow_mut().tasks[current].count_time += 1;
+        let count = self.inner.borrow().tasks[current].count_time;
+        // println!("count: {}", count);
+        if count > TIME_COUNT_THRESHOLD {
+            mark_current_exited();
+            run_next_task();
+        }
     }
 
     fn mark_current_suspended(&self) {
         let mut inner = self.inner.borrow_mut();
-        inner.current_task.task_status = TaskStatus::Ready;
-        // info!("current task {} status {:?}",
-        //       inner.current_task.index,
-        //       inner.current_task.task_status);
+        let current = inner.current_task;
+        inner.tasks[current].task_status = TaskStatus::Ready;
     }
 
     fn mark_current_exited(&self) {
         let mut inner = self.inner.borrow_mut();
-        inner.current_task.task_status = TaskStatus::Exited;
-        // info!("current task {} status {:?}",
-        //       inner.current_task.index,
-        //       inner.current_task.task_status);
+        let current = inner.current_task;
+        inner.tasks[current].task_status = TaskStatus::Exited;
     }
 
-    fn find_next_task(&self) -> Option<TaskControlBlock> {
-        let mut inner = self.inner.borrow_mut();
-        // info!("find_next_task: inner tasks size = {}", inner.tasks.len());
-        while !inner.tasks.is_empty() {
-            let task = inner.tasks.pop().unwrap();
-            // info!("find_next_task: task pass = {}", task.pass);
-            return Some(task);
+    fn find_next_task(&self) -> Option<usize> {
+        let inner = self.inner.borrow();
+        let current = inner.current_task;
+        let mut next_task: isize = -1;
+        let mut min_pass: usize = usize::max_value();
+        for i in current + 1..current + self.num_app + 1 {
+            let id = i % self.num_app;
+            if inner.tasks[id].task_status == TaskStatus::Ready &&
+                inner.tasks[id].pass < min_pass {
+                next_task = id.try_into().unwrap();
+                min_pass = inner.tasks[id].pass;
+            }
         }
-        None
+        if next_task != -1 { Some(next_task as usize) } else { None }
     }
 
     fn run_next_task(&self) {
-        if let Some(mut next) = self.find_next_task() {
-            // println!("next status = {:?}", next.task_status);
+        if let Some(next) = self.find_next_task() {
             let mut inner = self.inner.borrow_mut();
-            if inner.current_task.task_status == TaskStatus::Ready {
-                // info!("push {} status {:?}",
-                //       inner.current_task.index, inner.current_task.task_status);
-                let current = inner.current_task.clone();
-                inner.tasks.push(current);
-                // println!("push Ready current: {:?}", current);
-            }
-            info!("Run Application {}...", next.index);
-            next.task_status = TaskStatus::Running;
-            next.update_pass();
-            let current_task_cx_ptr2 = inner.current_task.get_task_cx_ptr2();
-            let next_task_cx_ptr2 = next.get_task_cx_ptr2();
+            let current = inner.current_task;
+            inner.tasks[next].task_status = TaskStatus::Running;
+            inner.tasks[next].update_pass();
             inner.current_task = next;
-            core::mem::drop(inner); // drop 掉 inner 可变引用
-            unsafe {
-                // println!("current: {:x?}, next: {:x?}",
-                //          current_task_cx_ptr2,
-                //          next_task_cx_ptr2);
-                __switch(current_task_cx_ptr2, next_task_cx_ptr2);
-            }
+            let current_task_cx_ptr2 = inner.tasks[current].get_task_cx_ptr2();
+            let next_task_cx_ptr2 = inner.tasks[next].get_task_cx_ptr2();
+            core::mem::drop(inner);
+            unsafe { __switch(current_task_cx_ptr2, next_task_cx_ptr2); }
         } else {
             panic!("All applications completed!");
         }
@@ -169,4 +169,8 @@ pub fn current_user_stack_top() -> usize {
 
 pub fn set_current_priority(pri: usize) {
     TASK_MANAGER.set_current_priority(pri);
+}
+
+pub fn update_time_counter() {
+    TASK_MANAGER.update_time_counter();
 }

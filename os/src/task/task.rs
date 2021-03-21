@@ -1,14 +1,13 @@
-use core::cmp::{Eq, Ord, PartialOrd, Ordering};
 use crate::config::BIG_STRIDE;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TaskControlBlock {
-    pub index: usize,
     pub task_cx_ptr: usize,
     pub task_status: TaskStatus,
     pub pass: usize,
     pub stride: usize,
-    pub priority: usize
+    pub priority: usize,
+    pub count_time: usize
 }
 
 impl TaskControlBlock {
@@ -26,31 +25,10 @@ impl TaskControlBlock {
     }
 }
 
-impl PartialEq for TaskControlBlock {
-    fn eq(&self, other: &Self) -> bool {
-        self.pass == other.pass && self.index == other.index
-    }
-}
-
-impl Eq for TaskControlBlock {}
-
-impl PartialOrd for TaskControlBlock {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for TaskControlBlock {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.pass.cmp(&self.pass)
-            .then_with(|| other.priority.cmp(&self.priority))
-            .then_with(|| other.index.cmp(&self.index))
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TaskStatus {
     Ready,
     Running,
-    Exited
+    Exited,
+    UnInit
 }
