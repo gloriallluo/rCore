@@ -1,0 +1,11 @@
+default:
+  image: wangrunji0408/rcore-lab
+
+stages:
+  - test
+
+test-code-job:
+  stage: test
+  script:
+    - git clone https://gitlab-ci-token:i9tQiwpeUjAtG9Unrx23@git.tsinghua.edu.cn/os-21/rcore_tutorial_tests.git
+    - cd rcore_tutorial_tests && make test CHAPTER=`echo $CI_COMMIT_REF_NAME | grep -oP 'ch\K[0-9]'`
