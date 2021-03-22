@@ -37,7 +37,7 @@ TimeVal {
 
 #### `stride` 算法的实现
 
-在 `TaskControlBlock` 中添加了几个成员变量：`pass`、`stride` 以及 `priority`，以记录进程的优先级以及执行的进度等等。每当一个进程被运行，就会更新它的 `pass`，有 `self.pass += self.stride`；而在选择下一个执行的进程时，则选择 `pass` 最小的进程。
+在 `TaskControlBlock` 中添加了几个成员变量：`pass`、`stride` 以及 `priority`，以记录进程的优先级以及执行的进度等等。每当一个进程被运行，就会更新它的 `stride`，有 `self.stride += self.pass`；而在选择下一个执行的进程时，则选择 `stride` 最小的进程。
 
 最终测例 3_2 各个进程的优先级以及执行时间分别为：
 
@@ -106,7 +106,7 @@ TimeVal {
 
     **实际情况是轮到 p1 执行吗？为什么？**
 
-    在 p2 执行完后有 `p1.pass = 10, p2.pass = 4`，之后仍然是 p2 执行。这是因为仅使用 8bit 存储，做加法时发生了溢出。
+    在 p2 执行完后有 `p1.stride = 255, p2.stride = 4`，之后仍然是 p2 执行。这是因为仅使用 8bit 存储，做加法时发生了溢出。
 
     
 
@@ -114,11 +114,19 @@ TimeVal {
 
     **为什么？尝试简单说明（传达思想即可，不要求严格证明）。**
 
-    `STRIDE_MAX` <= `BigStride` / 2
+    采用归纳法证明。在算法开始时，有 `STRIDE_MAX` == `STRIDE_MIN` == 0。
 
-    `STRIDE_MIN` >= `BigStride` / `isize::MAX` >= 0
+    进行完第一步后，由于 `pass` < `BigStride` / 2 所以该命题成立。
 
-    则有 `STRIDE_MAX` - `STRIDE_MIN` <= `BigStride` / 2
+    假设进行完第 n 步后，有 `STRIDE_MAX` - `STRIDE_MIN` <= `BigStride` / 2。那么进行了第 n + 1 步之后，原 `STRIDE_MIN` 的进程被执行，其 `stride` 至多增加 `BigStride` / 2，有以下几种情况：
+
+    -   `STRIDE_MAX` 被 `STRIDE_MIN` + `pass` 所更新：则 new `STRIDE_MAX` = `STRIDE_MIN` + `pass`，而 new `STRIDE_MIN` >= `STRIDE_MIN`。则有
+
+         new `STRIDE_MAX` - new `STRIDE_MIN` = `STRIDE_MIN` + `pass` - new `STRIDE_MIN` <= `STRIDE_MIN` + `pass` - `STRIDE_MIN` = `pass` <= `BigStride` / 2。
+
+    -   `STRIDE_MAX` 仍维持原样：由于 new `STRIDE_MIN` 更大，则不难得出 `STRIDE_MAX` - `STRIDE_MIN` <= `BigStride` / 2。
+
+    则可以得出结论，`STRIDE_MAX` - `STRIDE_MIN` <= `BigStride` / 2。
 
     
 
@@ -135,7 +143,8 @@ TimeVal {
     
     impl PartialOrd for Stride {
         fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            if Wrapping(self.0 - other.0).abs() < BIG_STRIDE / 2 {
+            let dif = if self.0 > other.0 { self.0 - other.0 } else { other.0 - self.0 };
+            if dif < BIG_STRIDE / 2 {
                 Some(self.0.cmp(other.0))
             } else {
                 Some(other.0.cmp(self.0))
@@ -150,8 +159,4 @@ TimeVal {
     }
     ```
 
-    例如使用 8 bits 存储 stride, BigStride = 255, 则:
-
-    -   (125 < 255) == false
-    -   (129 < 255) == true
 
