@@ -7,10 +7,11 @@ rustflags = [
 ]
 
 [source.crates-io]
-replace-with = 'tuna'
+registry = "https://github.com/rust-lang/crates.io-index"
+replace-with = 'ustc'
 
 [source.ustc]
-registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
+registry = "git://mirrors.ustc.edu.cn/crates.io-index"
 
 #[net]
 #git-fetch-with-cli = true
