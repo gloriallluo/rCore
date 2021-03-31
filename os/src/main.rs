@@ -19,6 +19,7 @@ mod timer;
 mod memory;
 
 extern crate alloc;
+extern crate bitflags;
 
 // 将 .bss 段清零
 fn clear_bss() {
