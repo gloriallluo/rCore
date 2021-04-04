@@ -5,3 +5,6 @@ target = "riscv64gc-unknown-none-elf"
 rustflags = [
     "-Clink-args=-Tsrc/linker.ld",
 ]
+
+[net]
+git-fetch-with-cli = true

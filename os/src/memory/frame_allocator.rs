@@ -1,10 +1,9 @@
 use spin::Mutex;
 use lazy_static::*;
 use alloc::vec::Vec;
-use crate::memory::address::PhysPageNum;
-use riscv::addr::PhysAddr;
+use crate::memory::address::{PhysPageNum, PhysAddr};
 use crate::config::MEMORY_END;
-use core::fmt::{self, Debug, Write, Formatter};
+use core::fmt::{self, Debug, Formatter};
 
 
 /// FrameTracker

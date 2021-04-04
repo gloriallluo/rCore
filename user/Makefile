@@ -10,8 +10,8 @@ OBJCOPY := rust-objcopy --binary-architecture=riscv64
 CP := cp
 PY := python3
 BUILD_SCRIPTS := build.py
-CH_TESTS :=
-CHAPTER ?=
+CH_TESTS := 
+CHAPTER ?= 
 
 CH2_TESTS := ch2 ch2t
 CH2_TESTS_BAD := _ch2 _ch2t
@@ -58,7 +58,7 @@ pre:
 	@mkdir -p $(BUILD_DIR)/bin/
 	@mkdir -p $(BUILD_DIR)/elf/
 	@mkdir -p $(BUILD_DIR)/asm/
-
+	
 all: binary pre
 	@$(foreach t, $(CH_TESTS), $(CP) $(TARGET_DIR)/$(t)_*.bin $(BUILD_DIR)/bin/;)
 	@$(foreach t, $(CH_TESTS), $(CP) $(TARGET_DIR)/$(t)_*.elf $(BUILD_DIR)/elf/;)

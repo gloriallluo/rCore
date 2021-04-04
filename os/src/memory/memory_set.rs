@@ -5,9 +5,9 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use alloc::collections::BTreeMap;
 use riscv::register::satp;
-use crate::config::{PAGE_SIZE, MEMORY_END, USER_STACK_SIZE};
+use crate::config::{PAGE_SIZE, MEMORY_END, USER_STACK_SIZE, TRAMPOLINE, TRAP_CONTEXT};
 use crate::memory::page_table::{PageTable, PTEFlags, PageTableEntry};
-use crate::memory::address::{VirtPageNum, PhysPageNum, VirtAddr, PhysAddr, VPNRange};
+use crate::memory::address::{VirtPageNum, PhysPageNum, VirtAddr, PhysAddr, VPNRange, StepByOne};
 use crate::memory::frame_allocator::{FrameTracker, frame_alloc};
 
 
@@ -25,9 +25,9 @@ extern "C" {
 }
 
 lazy_static! {
-    pub static ref KERNEL_SPACE: Arc<Mutex<MemorySet>> = Arc::new(Mutex::new(
-        MemorySet::new_kernel()
-    ));
+    pub static ref KERNEL_SPACE: Arc<Mutex<MemorySet>> = Arc::new(
+        Mutex::new(MemorySet::new_kernel())
+    );
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -47,27 +47,29 @@ bitflags! {
 
 /// MemorySet
 
+#[derive(Debug)]
 pub struct MemorySet {
     page_table: PageTable,
     areas: Vec<MapArea>
 }
 
 impl MemorySet {
+    /// 新建一个 MemorySet（无参数）
     pub fn new_bare() -> Self {
-        Self {
-            page_table: PageTable::new(),
-            areas: Vec::new()
-        }
+        Self { page_table: PageTable::new(), areas: Vec::new() }
     }
     pub fn token(&self) -> usize {
         self.page_table.token()
     }
+    /// 新建一个 MapArea
     /// Assume that no conflicts.
-    pub fn insert_framed_area(&mut self, start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) {
+    pub fn insert_framed_area(&mut self, start_va: VirtAddr,
+                              end_va: VirtAddr, permission: MapPermission) {
         self.push(MapArea::new(
             start_va, end_va, MapType::Framed, permission
         ), None);
     }
+    /// 新建一个 MapArea
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
         map_area.map(&mut self.page_table);
         if let Some(data) = data {
@@ -83,6 +85,7 @@ impl MemorySet {
             PTEFlags::R | PTEFlags::X
         );
     }
+    /// 生成内核的地址空间
     /// Without kernel stacks.
     pub fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare();
@@ -130,6 +133,7 @@ impl MemorySet {
         ), None);
         memory_set
     }
+    /// 解析 elf 格式的可执行文件解析数据并生成对应应用的地址空间
     /// Include sections in elf and trampoline and TrapContext and user stack,
     /// also returns user_sp and entry point.
     pub fn from_elf(elf_data: &[u8]) -> (Self, usize, usize) {
@@ -154,10 +158,7 @@ impl MemorySet {
                 if ph_flags.is_write() { map_perm |= MapPermission::W; }
                 if ph_flags.is_execute() { map_perm |= MapPermission::X; }
                 let map_area = MapArea::new(
-                    start_va,
-                    end_va,
-                    MapType::Framed,
-                    map_perm,
+                    start_va, end_va, MapType::Framed, map_perm
                 );
                 max_end_vpn = map_area.vpn_range.get_end();
                 memory_set.push(
@@ -176,14 +177,14 @@ impl MemorySet {
             user_stack_bottom.into(),
             user_stack_top.into(),
             MapType::Framed,
-            MapPermission::R | MapPermission::W | MapPermission::U,
+            MapPermission::R | MapPermission::W | MapPermission::U
         ), None);
         // map TrapContext
         memory_set.push(MapArea::new(
             TRAP_CONTEXT.into(),
             TRAMPOLINE.into(),
             MapType::Framed,
-            MapPermission::R | MapPermission::W,
+            MapPermission::R | MapPermission::W
         ), None);
         (memory_set, user_stack_top, elf.header.pt2.entry_point() as usize)
     }
@@ -199,8 +200,10 @@ impl MemorySet {
     }
 }
 
+
 /// MapArea
 
+#[derive(Debug)]
 pub struct MapArea {
     vpn_range: VPNRange,
     data_frames: BTreeMap<VirtPageNum, FrameTracker>,
@@ -209,9 +212,9 @@ pub struct MapArea {
 }
 
 impl MapArea {
-    pub fn new(
-        start_va: VirtAddr, end_va: VirtAddr,
-        map_type: MapType, map_perm: MapPermission) -> Self {
+    /// 接受一段 VPN 的范围，新建一个 MapArea
+    pub fn new(start_va: VirtAddr, end_va: VirtAddr,
+               map_type: MapType, map_perm: MapPermission) -> Self {
         let start_vpn: VirtPageNum = start_va.floor();
         let end_vpn: VirtPageNum = end_va.ceil();
         Self {
@@ -221,6 +224,7 @@ impl MapArea {
             map_perm
         }
     }
+    /// 给一个 VPN 建立 PPN 映射
     pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
         let ppn: PhysPageNum;
         match self.map_type {
@@ -236,6 +240,7 @@ impl MapArea {
         let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
         page_table.map(vpn, ppn, pte_flags);
     }
+    /// 给一个 VPN 取消到 PPN 的映射
     #[allow(unused)]
     pub fn unmap_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
         match self.map_type {
@@ -244,19 +249,22 @@ impl MapArea {
             },
             _ => {}
         }
-        page_table.unmap(vpn);
+        page_table.unmap(vpn); // 删除这一键值对
     }
+    /// 将自己的 PageTable 里的页面一一建立映射
     pub fn map(&mut self, page_table: &mut PageTable) {
         for vpn in self.vpn_range {
             self.map_one(page_table, vpn);
         }
     }
+    /// 自己 PageTable 里的页面一一取消映射
     #[allow(unused)]
     pub fn unmap(&mut self, page_table: &mut PageTable) {
         for vpn in self.vpn_range {
             self.unmap_one(page_table, vpn);
         }
     }
+    /// 将切片 data 的数据拷贝到物理叶帧中
     /// data: start-aligned but maybe with shorter length
     /// assume that all frames were cleared before
     pub fn copy_data(&mut self, page_table: &mut PageTable, data: &[u8]) {
@@ -279,4 +287,23 @@ impl MapArea {
             current_vpn.step();
         }
     }
+}
+
+
+#[allow(unused)]
+pub fn remap_test() {
+    let mut kernel_space = KERNEL_SPACE.lock();
+    let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
+    let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
+    let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();
+    assert_eq!(
+        kernel_space.page_table.translate(mid_text.floor()).unwrap().writable(), false
+    );
+    assert_eq!(
+        kernel_space.page_table.translate(mid_rodata.floor()).unwrap().writable(), false
+    );
+    assert_eq!(
+        kernel_space.page_table.translate(mid_data.floor()).unwrap().executable(), false
+    );
+    println!("remap_test passed!");
 }

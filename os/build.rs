@@ -7,22 +7,15 @@ fn main() {
     insert_app_data().unwrap();
 }
 
-// 用户程序编译出来的 .bin 文件
-static TARGET_PATH: &str = "../user/build/bin/";
+static TARGET_PATH: &str = "../user/target/riscv64gc-unknown-none-elf/release/";
 
-// 生成 `link_app.S`
 fn insert_app_data() -> Result<()> {
     let mut f = File::create("src/link_app.S").unwrap();
-    let mut apps: Vec<_> = read_dir("../user/build/elf/")
+    let mut apps: Vec<_> = read_dir("../user/src/bin")
         .unwrap()
         .into_iter()
-        .filter(|dir_entry| {
-            let name_with_ext = dir_entry.as_ref().unwrap().file_name().into_string().unwrap();
-            name_with_ext.find('.').unwrap() != 0
-        })
         .map(|dir_entry| {
             let mut name_with_ext = dir_entry.unwrap().file_name().into_string().unwrap();
-            // println!("{}", name_with_ext);
             name_with_ext.drain(name_with_ext.find('.').unwrap()..name_with_ext.len());
             name_with_ext
         })
@@ -47,8 +40,9 @@ _num_app:
     .section .data
     .global app_{0}_start
     .global app_{0}_end
+    .align 3
 app_{0}_start:
-    .incbin "{2}{1}.bin"
+    .incbin "{2}{1}"
 app_{0}_end:"#, idx, app, TARGET_PATH)?;
     }
     Ok(())

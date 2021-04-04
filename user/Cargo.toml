@@ -1,11 +1,10 @@
 [package]
-name = "user_lib"
+name = "user-lib"
 version = "0.1.0"
-authors = ["罗境佳 <luojj18@mails.tsinghua.edu.cn>"]
+authors = ["deathwish5 <zyr16@mails.tsinghua.edu.cn>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-bitflags = "1.2.1"
 buddy_system_allocator = "0.6"
+bitflags = "1.2.1"

@@ -41,7 +41,6 @@ pub extern "C" fn rust_main() {
     println!("[kernel] Hello, world!");
     memory::init();
     trap::init();
-    loader::load_apps();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
     task::run_first_task();
