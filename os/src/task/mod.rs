@@ -48,7 +48,6 @@ lazy_static! {
 impl TaskManager {
     fn run_first_task(&self) {
         let mut inner = self.inner.borrow_mut();
-        // info!("[kernel] Run task {}", 0);
         inner.tasks[0].task_status = TaskStatus::Running;
         inner.tasks[0].update_pass();
         let next_task_cx_ptr2 = inner.tasks[0].get_task_cx_ptr2();
@@ -71,7 +70,6 @@ impl TaskManager {
         let current = self.inner.borrow().current_task;
         self.inner.borrow_mut().tasks[current].count_time += 1;
         let count = self.inner.borrow().tasks[current].count_time;
-        // println!("count: {}", count);
         if count > TIME_COUNT_THRESHOLD {
             mark_current_exited();
             run_next_task();
@@ -121,7 +119,6 @@ impl TaskManager {
     }
 
     fn munmap_current(&self, start_va: VirtAddr, end_va: VirtAddr) -> Option<isize> {
-        // println!("0");
         let start_vpn = start_va.floor();
         let end_vpn = end_va.ceil();
         let mut inner = self.inner.borrow_mut();
