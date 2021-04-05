@@ -1,8 +1,9 @@
 use bitflags::*;
 use crate::memory::address::{
-    PhysPageNum, VirtPageNum, VirtAddr, StepByOne};
+    PhysPageNum, VirtPageNum, VirtAddr, StepByOne
+};
 use alloc::vec;
-use alloc::vec::{Vec};
+use alloc::vec::Vec;
 use crate::memory::frame_allocator::{FrameTracker, frame_alloc};
 
 bitflags! {
@@ -50,6 +51,9 @@ impl PageTableEntry {
     }
     pub fn executable(&self) -> bool {
         (self.flags() & PTEFlags::X) != PTEFlags::empty()
+    }
+    pub fn u_able(&self) -> bool {
+        (self.flags() & PTEFlags::U) != PTEFlags::empty()
     }
 }
 
