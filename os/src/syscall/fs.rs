@@ -5,7 +5,7 @@ use crate::task::{current_user_token};
 const FD_STDOUT: usize = 1;
 
 pub fn sys_write(fd: usize, buf: *const u8, len: usize, _cx: &TrapContext) -> isize {
-    // // security check
+    // security check
     // let app_range = current_app_space();
     // let in_app_range = app_range.contains(&(buf as usize)) &&
     //     app_range.contains(&(buf as usize + len));

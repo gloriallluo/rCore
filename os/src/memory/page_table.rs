@@ -69,6 +69,7 @@ impl PageTable {
             frames: vec![frame]
         }
     }
+
     /// Temporarily used to get arguments from user space.
     pub fn from_token(satp: usize) -> Self {
         Self {
@@ -76,6 +77,7 @@ impl PageTable {
             frames: Vec::new()
         }
     }
+
     /// 找到对应的页表项，若没有则创建一个
     fn find_pte_create(&mut self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
         let idxs = vpn.indexes();
@@ -96,6 +98,7 @@ impl PageTable {
         }
         result
     }
+
     fn find_pte(&self, vpn: VirtPageNum) -> Option<&PageTableEntry> {
         let idxs = vpn.indexes();
         let mut ppn = self.root_ppn;
@@ -113,6 +116,7 @@ impl PageTable {
         }
         result
     }
+
     /// insert key-value pair in page table
     #[allow(unused)]
     pub fn map(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) {
@@ -120,6 +124,7 @@ impl PageTable {
         assert!(!pte.is_valid(), "vpn {:?} is mapped before mapping", vpn);
         *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);
     }
+
     /// remove key-value pair in page table
     #[allow(unused)]
     pub fn unmap(&mut self, vpn: VirtPageNum) {
@@ -127,15 +132,18 @@ impl PageTable {
         assert!(pte.is_valid(), "vpn {:?} is invalid before unmapping", vpn);
         *pte = PageTableEntry::empty();
     }
+
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         self.find_pte(vpn)
-            .map(|pte| {pte.clone()})
+            .map(|pte| { pte.clone() })
     }
+
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_ppn.0
     }
 }
 
+/// 将应用地址空间中的一个缓冲区转化为能在内存中直接访问的形式
 pub fn translated_byte_buffer(token: usize,
                               ptr: *const u8,
                               len: usize) -> Vec<&'static mut [u8]> {

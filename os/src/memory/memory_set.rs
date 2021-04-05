@@ -5,10 +5,17 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use alloc::collections::BTreeMap;
 use riscv::register::satp;
-use crate::config::{PAGE_SIZE, MEMORY_END, USER_STACK_SIZE, TRAMPOLINE, TRAP_CONTEXT};
-use crate::memory::page_table::{PageTable, PTEFlags, PageTableEntry};
-use crate::memory::address::{VirtPageNum, PhysPageNum, VirtAddr, PhysAddr, VPNRange, StepByOne};
+use crate::memory::page_table::{
+    PageTable, PTEFlags, PageTableEntry
+};
+use crate::memory::address::{
+    VirtPageNum, PhysPageNum, VirtAddr,
+    PhysAddr, VPNRange, StepByOne
+};
 use crate::memory::frame_allocator::{FrameTracker, frame_alloc};
+use crate::config::{
+    PAGE_SIZE, MEMORY_END, USER_STACK_SIZE, TRAMPOLINE, TRAP_CONTEXT
+};
 
 
 extern "C" {
@@ -49,8 +56,8 @@ bitflags! {
 
 #[derive(Debug)]
 pub struct MemorySet {
-    page_table: PageTable,
-    areas: Vec<MapArea>
+    pub(crate) page_table: PageTable,
+    pub(crate) areas: Vec<MapArea>
 }
 
 impl MemorySet {
@@ -58,18 +65,49 @@ impl MemorySet {
     pub fn new_bare() -> Self {
         Self { page_table: PageTable::new(), areas: Vec::new() }
     }
+
+    /// 页表根结点
     pub fn token(&self) -> usize {
         self.page_table.token()
     }
+
+    pub fn contains_vpn(&self, start_vpn: VirtPageNum, end_vpn: VirtPageNum) -> bool {
+        let mut contains = 0;
+        for area in &self.areas {
+            contains |= area.contains(start_vpn, end_vpn);
+        }
+        contains != 0
+    }
+
     /// 新建一个 MapArea
     /// Assume that no conflicts.
-    pub fn insert_framed_area(&mut self, start_va: VirtAddr,
-                              end_va: VirtAddr, permission: MapPermission) {
+    pub fn insert_framed_area(&mut self, start_va: VirtAddr, end_va: VirtAddr,
+                              permission: MapPermission) {
         self.push(MapArea::new(
             start_va, end_va, MapType::Framed, permission
         ), None);
     }
-    /// 新建一个 MapArea
+
+    pub fn remove_framed_area(&mut self, start_vpn: VirtPageNum, end_vpn: VirtPageNum) -> Option<isize> {
+        let mut idx = 0;
+        for map_area in &mut self.areas {
+            if start_vpn == map_area.vpn_range.get_start() && end_vpn == map_area.vpn_range.get_end() {
+                for vpn in start_vpn.0..end_vpn.0 {
+                    map_area.unmap_one(&mut self.page_table, VirtPageNum::from(vpn));
+                }
+                break;
+            }
+            idx += 1;
+        }
+        if idx != self.areas.len() {
+            self.areas.remove(idx);
+            Some((end_vpn.0 - start_vpn.0) as isize)
+        } else {
+            None
+        }
+    }
+
+    /// 插入一个 MapArea
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
         map_area.map(&mut self.page_table);
         if let Some(data) = data {
@@ -77,6 +115,7 @@ impl MemorySet {
         }
         self.areas.push(map_area);
     }
+
     /// Mention that trampoline is not collected by areas.
     fn map_trampoline(&mut self) {
         self.page_table.map(
@@ -85,6 +124,7 @@ impl MemorySet {
             PTEFlags::R | PTEFlags::X
         );
     }
+
     /// 生成内核的地址空间
     /// Without kernel stacks.
     pub fn new_kernel() -> Self {
@@ -133,6 +173,7 @@ impl MemorySet {
         ), None);
         memory_set
     }
+
     /// 解析 elf 格式的可执行文件解析数据并生成对应应用的地址空间
     /// Include sections in elf and trampoline and TrapContext and user stack,
     /// also returns user_sp and entry point.
@@ -188,6 +229,7 @@ impl MemorySet {
         ), None);
         (memory_set, user_stack_top, elf.header.pt2.entry_point() as usize)
     }
+
     pub fn activate(&self) {
         let satp = self.page_table.token();
         unsafe {
@@ -195,6 +237,7 @@ impl MemorySet {
             llvm_asm!("sfence.vma" :::: "volatile");
         }
     }
+
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         self.page_table.translate(vpn)
     }
@@ -205,7 +248,7 @@ impl MemorySet {
 
 #[derive(Debug)]
 pub struct MapArea {
-    vpn_range: VPNRange,
+    pub(crate) vpn_range: VPNRange,
     data_frames: BTreeMap<VirtPageNum, FrameTracker>,
     map_type: MapType,
     map_perm: MapPermission
@@ -224,6 +267,13 @@ impl MapArea {
             map_perm
         }
     }
+
+    /// 有交
+    pub fn contains(&self, start_vpn: VirtPageNum, end_vpn: VirtPageNum) -> i32 {
+        if start_vpn >= self.vpn_range.get_end()
+            || end_vpn <= self.vpn_range.get_start() { 0 } else { 1 }
+    }
+
     /// 给一个 VPN 建立 PPN 映射
     pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
         let ppn: PhysPageNum;
@@ -240,6 +290,7 @@ impl MapArea {
         let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
         page_table.map(vpn, ppn, pte_flags);
     }
+
     /// 给一个 VPN 取消到 PPN 的映射
     #[allow(unused)]
     pub fn unmap_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
@@ -251,12 +302,14 @@ impl MapArea {
         }
         page_table.unmap(vpn); // 删除这一键值对
     }
+
     /// 将自己的 PageTable 里的页面一一建立映射
     pub fn map(&mut self, page_table: &mut PageTable) {
         for vpn in self.vpn_range {
             self.map_one(page_table, vpn);
         }
     }
+
     /// 自己 PageTable 里的页面一一取消映射
     #[allow(unused)]
     pub fn unmap(&mut self, page_table: &mut PageTable) {
@@ -264,6 +317,7 @@ impl MapArea {
             self.unmap_one(page_table, vpn);
         }
     }
+
     /// 将切片 data 的数据拷贝到物理叶帧中
     /// data: start-aligned but maybe with shorter length
     /// assume that all frames were cleared before

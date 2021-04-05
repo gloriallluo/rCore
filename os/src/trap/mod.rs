@@ -1,12 +1,10 @@
 use riscv::register::{
-    mtvec::TrapMode, stvec,
-    scause::{self, Trap, Interrupt, Exception},
-    stval, sie
+    mtvec::TrapMode, stvec, stval, sie,
+    scause::{self, Trap, Interrupt, Exception}
 };
-use crate::trap::context::TrapContext;
 use crate::task::{
-    exit_current_and_run_next, suspend_current_and_run_next,
-    update_time_counter, current_user_token
+    exit_current_and_run_next, suspend_current_and_run_next, update_time_counter,
+    current_user_token, current_trap_cx
 };
 use crate::syscall::syscall;
 use crate::timer::set_next_trigger;
@@ -35,7 +33,8 @@ pub fn enable_timer_interrupt() {
 }
 
 #[no_mangle]
-pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
+pub fn trap_handler() -> ! {
+    let cx = current_trap_cx();
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
@@ -69,7 +68,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
         }
     }
-    cx
+    trap_return()
 }
 
 #[no_mangle]

@@ -47,7 +47,7 @@ pub struct StackFrameAllocator {
     // [current, end): not allocated
     current: usize,
     end: usize,
-    // recycled memory, first-in-last-out
+    // recycled memory, a stack storing the recycled memories
     recycled: Vec<usize>
 }
 
@@ -62,6 +62,7 @@ impl FrameAllocator for StackFrameAllocator {
     fn new() -> Self {
         Self { current: 0, end: 0, recycled: Vec::new() }
     }
+
     fn alloc(&mut self) -> Option<PhysPageNum> {
         if let Some(ppn) = self.recycled.pop() {
             Some(ppn.into())
@@ -99,6 +100,7 @@ lazy_static! {
 
 pub fn init_frame_allocator() {
     extern "C" { fn ekernel(); }
+    // unsafe { println!("init: {:x?}..{:x?}", ekernel as usize, MEMORY_END); }
     FRAME_ALLOCATOR
         .lock()
         .init(
@@ -109,8 +111,7 @@ pub fn init_frame_allocator() {
 
 pub fn frame_alloc() -> Option<FrameTracker> {
     FRAME_ALLOCATOR
-        .lock()
-        .alloc()
+        .lock().alloc()
         .map(|ppn| FrameTracker::new(ppn))
 }
 
@@ -118,4 +119,22 @@ fn frame_dealloc(ppn: PhysPageNum) {
     FRAME_ALLOCATOR
         .lock()
         .dealloc(ppn);
+}
+
+#[allow(unused)]
+pub fn frame_allocator_test() {
+    let mut v: Vec<FrameTracker> = Vec::new();
+    for i in 0..5 {
+        let frame = frame_alloc().unwrap();
+        println!("{:?}", frame);
+        v.push(frame);
+    }
+    v.clear();
+    for i in 0..5 {
+        let frame = frame_alloc().unwrap();
+        println!("{:?}", frame);
+        v.push(frame);
+    }
+    drop(v);
+    println!("frame_allocator_test passed!");
 }

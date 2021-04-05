@@ -83,11 +83,13 @@ impl PhysPageNum {
         let pa: PhysAddr = self.clone().into();
         unsafe { from_raw_parts_mut(pa.0 as *mut PageTableEntry, 512) }
     }
+
     /// 字节数组的可变引用
     pub fn get_bytes_array(&self) -> &'static mut [u8] {
         let pa: PhysAddr = self.clone().into();
         unsafe { from_raw_parts_mut(pa.0 as *mut u8, 4096) }
     }
+
     /// 泛型数组的可变引用
     pub fn get_mut<T>(&self) -> &'static mut T {
         let pa: PhysAddr = self.clone().into();
@@ -154,8 +156,8 @@ pub struct SimpleRange<T>
     r: T
 }
 
-impl<T> SimpleRange<T> where
-    T: StepByOne + Copy + PartialEq + PartialOrd + Debug {
+impl<T> SimpleRange<T>
+    where T: StepByOne + Copy + PartialEq + PartialOrd + Debug {
     pub fn new(start: T, end: T) -> Self {
         assert!(start <= end, "start {:?} > end {:?}!", start, end);
         Self { l: start, r: end }
@@ -163,8 +165,9 @@ impl<T> SimpleRange<T> where
     pub fn get_start(&self) -> T { self.l }
     pub fn get_end(&self) -> T { self.r }
 }
-impl<T> IntoIterator for SimpleRange<T> where
-    T: StepByOne + Copy + PartialEq + PartialOrd + Debug {
+
+impl<T> IntoIterator for SimpleRange<T>
+    where T: StepByOne + Copy + PartialEq + PartialOrd + Debug {
     type Item = T;
     type IntoIter = SimpleRangeIterator<T>;
     fn into_iter(self) -> Self::IntoIter {
@@ -175,7 +178,7 @@ impl<T> IntoIterator for SimpleRange<T> where
 pub struct SimpleRangeIterator<T>
     where T: StepByOne + Copy + PartialEq + PartialOrd + Debug {
     current: T,
-    end: T,
+    end: T
 }
 
 impl<T> SimpleRangeIterator<T>

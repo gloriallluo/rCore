@@ -1,6 +1,6 @@
 pub(crate) mod address;
 pub(crate) mod page_table;
-mod frame_allocator;
+pub(crate) mod frame_allocator;
 mod heap_allocator;
 pub(crate) mod memory_set;
 
