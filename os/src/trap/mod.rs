@@ -3,20 +3,19 @@ use riscv::register::{
     scause::{self, Trap, Interrupt, Exception}
 };
 use crate::task::{
-    exit_current_and_run_next, suspend_current_and_run_next, update_time_counter,
-    current_user_token, current_trap_cx
+    exit_current_and_run_next, suspend_current_and_run_next
 };
 use crate::syscall::syscall;
 use crate::timer::set_next_trigger;
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
+use crate::task::processor::{current_trap_cx, current_user_token};
 
 pub mod context;
 
 global_asm!(include_str!("trap.S"));
 
 pub fn init() {
-    extern "C" { fn __alltraps(); }
-    unsafe { stvec::write(__alltraps as usize, TrapMode::Direct); }
+    set_kernel_trap_entry();
 }
 
 #[allow(unused)]
@@ -34,33 +33,41 @@ pub fn enable_timer_interrupt() {
 
 #[no_mangle]
 pub fn trap_handler() -> ! {
-    let cx = current_trap_cx();
+    set_kernel_trap_entry();
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
-            cx.sepc += 4; // execute the next instruction after return
-            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]], cx) as usize;
+            // jump to next instruction anyway
+            let mut cx = current_trap_cx();
+            cx.sepc += 4;
+            // get system call return value
+            let result = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]], cx);
+            // cx is changed during sys_exec, so we have to call it again
+            cx = current_trap_cx();
+            cx.x[10] = result as usize;
         }
         Trap::Exception(Exception::StoreFault) |
-        Trap::Exception(Exception::StorePageFault) => {
-            println!("[kernel] Store Page Fault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
-                     stval, cx.sepc);
-            exit_current_and_run_next();
-        },
+        Trap::Exception(Exception::StorePageFault) |
+        Trap::Exception(Exception::InstructionFault) |
+        Trap::Exception(Exception::InstructionPageFault) |
         Trap::Exception(Exception::LoadFault) |
         Trap::Exception(Exception::LoadPageFault) => {
-            println!("[kernel] Load Page Fault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
-                     stval, cx.sepc);
-            exit_current_and_run_next();
+            println!(
+                "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
+                scause.cause(), stval, current_trap_cx().sepc
+            );
+            // page fault exit code
+            exit_current_and_run_next(-2);
         },
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] Illegal Instruction in application, bad instruction = {:#x}, core dumped.",
                      stval);
-            exit_current_and_run_next();
+            exit_current_and_run_next(-3);
         },
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
-            update_time_counter();
+            // TODO
+            // update_time_counter();
             set_next_trigger();
             suspend_current_and_run_next();
         },

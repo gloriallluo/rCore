@@ -175,6 +175,7 @@ pub fn set_priority(prio: isize) -> isize {
     sys_set_priority(prio)
 }
 
+/// 等待任意一个子进程结束
 pub fn wait(exit_code: &mut i32) -> isize {
     loop {
         match sys_waitpid(-1, exit_code as *mut _) {
@@ -188,6 +189,7 @@ pub fn wait(exit_code: &mut i32) -> isize {
     }
 }
 
+/// 等待一个特定的子进程结束
 pub fn waitpid(pid: usize, exit_code: &mut i32) -> isize {
     loop {
         match sys_waitpid(pid as isize, exit_code as *mut _) {

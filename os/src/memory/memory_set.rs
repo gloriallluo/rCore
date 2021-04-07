@@ -12,7 +12,10 @@ use crate::memory::address::{
     VirtPageNum, PhysPageNum, VirtAddr,
     PhysAddr, VPNRange, StepByOne
 };
-use crate::memory::frame_allocator::{FrameTracker, frame_alloc};
+use crate::memory::frame_allocator::{
+    FrameTracker,
+    frame_alloc
+};
 use crate::config::{
     PAGE_SIZE, MEMORY_END, USER_STACK_SIZE, TRAMPOLINE, TRAP_CONTEXT
 };
@@ -88,7 +91,18 @@ impl MemorySet {
         ), None);
     }
 
-    pub fn remove_framed_area(&mut self, start_vpn: VirtPageNum, end_vpn: VirtPageNum) -> Option<isize> {
+    pub fn remove_area_with_start_vpn(&mut self, start_vpn: VirtPageNum) {
+        if let Some((idx, area)) = self.areas
+            .iter_mut().enumerate()
+            .find(|(_, area)| area.vpn_range.get_start() == start_vpn) {
+            area.unmap(&mut self.page_table);
+            self.areas.remove(idx);
+        }
+    }
+
+    pub fn remove_framed_area(&mut self,
+                              start_vpn: VirtPageNum,
+                              end_vpn: VirtPageNum) -> Option<isize> {
         let mut idx = 0;
         for map_area in &mut self.areas {
             if start_vpn == map_area.vpn_range.get_start() && end_vpn == map_area.vpn_range.get_end() {
@@ -230,6 +244,25 @@ impl MemorySet {
         (memory_set, user_stack_top, elf.header.pt2.entry_point() as usize)
     }
 
+    /// 复制一个完全相同的地址空间
+    pub fn from_existed_user(user_space: &MemorySet) -> MemorySet {
+        let mut memory_set = Self::new_bare();
+        // map trampoline
+        memory_set.map_trampoline();
+        // copy data sections/trap_context/user_stack
+        for area in user_space.areas.iter() {
+            let new_area = MapArea::from_another(area);
+            memory_set.push(new_area, None);
+            // copy data from another space
+            for vpn in area.vpn_range {
+                let src_ppn = user_space.translate(vpn).unwrap().ppn();
+                let dst_ppn = memory_set.translate(vpn).unwrap().ppn();
+                dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
+            }
+        }
+        memory_set
+    }
+
     pub fn activate(&self) {
         let satp = self.page_table.token();
         unsafe {
@@ -240,6 +273,10 @@ impl MemorySet {
 
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         self.page_table.translate(vpn)
+    }
+
+    pub fn recycle_data_pages(&mut self) {
+        self.areas.clear();
     }
 }
 
@@ -265,6 +302,18 @@ impl MapArea {
             data_frames: BTreeMap::new(),
             map_type,
             map_perm
+        }
+    }
+
+    /// 复制逻辑段得到一个虚拟地址区间、映射方式、权限控制均相同的逻辑段
+    pub fn from_another(another: &MapArea) -> Self {
+        Self {
+            vpn_range: VPNRange::new(
+                another.vpn_range.get_start(), another.vpn_range.get_end()
+            ),
+            data_frames: BTreeMap::new(),
+            map_type: another.map_type,
+            map_perm: another.map_perm
         }
     }
 
@@ -342,7 +391,6 @@ impl MapArea {
         }
     }
 }
-
 
 #[allow(unused)]
 pub fn remap_test() {
