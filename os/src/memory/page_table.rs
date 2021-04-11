@@ -1,11 +1,13 @@
 use bitflags::*;
-use crate::memory::address::{
-    PhysPageNum, VirtPageNum, PhysAddr, VirtAddr, StepByOne
-};
 use alloc::vec;
 use alloc::vec::Vec;
 use alloc::string::String;
-use crate::memory::frame_allocator::{FrameTracker, frame_alloc};
+use crate::memory::frame_allocator::{
+    FrameTracker, frame_alloc
+};
+use crate::memory::address::{
+    PhysPageNum, VirtPageNum, PhysAddr, VirtAddr, StepByOne
+};
 
 bitflags! {
     pub struct PTEFlags: u8 {

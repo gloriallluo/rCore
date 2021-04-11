@@ -28,6 +28,9 @@ pub fn get_app_data(app_id: usize) -> &'static [u8] {
 #[allow(unused)]
 pub fn get_app_data_by_name(name: &str) -> Option<&'static [u8]> {
     let num_app = get_num_app();
+    for i in 0..num_app {
+        println!("{}", APP_NAMES[i]);
+    }
     (0..num_app)
         .find(|&i| APP_NAMES[i] == name)
         .map(|i| get_app_data(i))

@@ -81,6 +81,25 @@ pub fn sys_exec(path: *const u8) -> isize {
     }
 }
 
+pub fn sys_spawn(path: *const u8) -> isize {
+    let token = current_user_token();
+    let current_task = current_task().unwrap();
+    let new_task = current_task.fork();
+    let new_pid = new_task.pid.0;
+    let path = translated_str(token, path);
+    let trap_cx = new_task.acquire_inner_lock().get_trap_cx();
+    trap_cx.x[10] = 0;
+    if let Some(data) = get_app_data_by_name(path.as_str()) {
+        new_task.exec(data);
+        let trap_cx = new_task.acquire_inner_lock().get_trap_cx();
+        trap_cx.x[10] = 0;
+        add_task(new_task);
+        new_pid as isize
+    } else {
+        -1
+    }
+}
+
 /// If there is not a child process whose pid is same as given, return -1.
 /// Else if there is a child process but it is still running, return -2.
 pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {

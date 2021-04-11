@@ -40,13 +40,13 @@ pub extern "C" fn rust_main() {
     clear_bss();
     println!("[kernel] Hello, world!");
     memory::init();
-    println!("[kernel] back to world!");
-    memory::frame_allocator::frame_allocator_test();
-    memory::memory_set::remap_test();
+    // memory::frame_allocator::frame_allocator_test();
+    // memory::memory_set::remap_test();
     task::add_initproc();
     trap::init();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
+    loader::list_apps();
     task::processor::run_tasks();
     panic!("Unreachable in rust_main!");
 }

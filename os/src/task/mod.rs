@@ -8,10 +8,13 @@ pub(crate) mod processor;
 use core::mem::drop;
 use lazy_static::*;
 use alloc::sync::Arc;
+use crate::loader::get_app_data_by_name;
+use crate::memory::address::VirtAddr;
+use crate::memory::memory_set::MapPermission;
 use crate::task::manager::add_task;
 use crate::task::task::{TaskControlBlock, TaskStatus};
-use crate::task::processor::{take_current_task, schedule};
-use crate::loader::get_app_data_by_name;
+use crate::task::processor::{take_current_task, schedule, PROCESSOR};
+
 
 
 pub fn suspend_current_and_run_next() {
@@ -67,6 +70,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
 
 lazy_static! {
     pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(
+        // FIXME
         TaskControlBlock::new(get_app_data_by_name("initproc").unwrap())
     );
 }
@@ -75,17 +79,15 @@ pub fn add_initproc() {
     add_task(INITPROC.clone());
 }
 
-pub fn mmap_current_task(start: usize, end: usize, _port: usize) -> Option<isize> {
-    // let mut perm: MapPermission = MapPermission::from_bits(0).unwrap();
-    // if port & 0x1 != 0 { perm.set(MapPermission::R, true); }
-    // if port & 0x2 != 0 { perm.set(MapPermission::W, true); }
-    // if port & 0x4 != 0 { perm.set(MapPermission::X, true); }
-    // perm.set(MapPermission::U, true);
-    // TASK_MANAGER.mmap_current(VirtAddr::from(start), VirtAddr::from(end), perm)
-    Some((end - start) as isize)
+pub fn mmap_current_task(start: usize, end: usize, port: usize) -> Option<isize> {
+    let mut perm: MapPermission = MapPermission::from_bits(0).unwrap();
+    if port & 0x1 != 0 { perm.set(MapPermission::R, true); }
+    if port & 0x2 != 0 { perm.set(MapPermission::W, true); }
+    if port & 0x4 != 0 { perm.set(MapPermission::X, true); }
+    perm.set(MapPermission::U, true);
+    PROCESSOR.mmap_current(VirtAddr::from(start), VirtAddr::from(end), perm)
 }
 
 pub fn munmap_current_task(start: usize, end: usize) -> Option<isize> {
-    // TASK_MANAGER.munmap_current(VirtAddr::from(start), VirtAddr::from(end))
-    Some((end - start) as isize)
+    PROCESSOR.munmap_current(VirtAddr::from(start), VirtAddr::from(end))
 }

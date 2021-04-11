@@ -1,10 +1,12 @@
 use lazy_static::*;
 use alloc::sync::Arc;
 use core::cell::RefCell;
-use crate::task::switch::__switch;
+use crate::memory::address::VirtAddr;
 use crate::trap::context::TrapContext;
+use crate::task::switch::__switch;
 use crate::task::task::{TaskControlBlock, TaskStatus};
 use crate::task::manager::fetch_task;
+use crate::memory::memory_set::MapPermission;
 
 
 pub struct Processor {
@@ -58,6 +60,38 @@ impl Processor {
     pub fn current(&self) -> Option<Arc<TaskControlBlock>> {
         self.inner.borrow().current.as_ref().map(|task| Arc::clone(task))
     }
+
+    pub fn mmap_current(&self, start_va: VirtAddr, end_va: VirtAddr,
+                    permission: MapPermission) -> Option<isize> {
+        let start_vpn = start_va.floor();
+        let end_vpn = end_va.ceil();
+        let real_start_va: VirtAddr = start_vpn.into();
+        let real_end_va: VirtAddr = end_vpn.into();
+        let inner = self.current().unwrap();
+        if inner.acquire_inner_lock().memory_set.contains_vpn(start_vpn, end_vpn) {
+            return None;
+        }
+        inner.acquire_inner_lock().memory_set.insert_framed_area(
+            real_start_va, real_end_va, permission
+        );
+        Some((real_end_va.0 - real_start_va.0) as isize)
+    }
+
+    pub fn munmap_current(&self, start_va: VirtAddr, end_va: VirtAddr) -> Option<isize> {
+        let start_vpn = start_va.floor();
+        let end_vpn = end_va.ceil();
+        let inner = self.current().unwrap();
+        let x = if let Some(vpn_len) = inner
+            .acquire_inner_lock()
+            .memory_set
+            .remove_framed_area(start_vpn, end_vpn) {
+            Some(vpn_len << 12)
+        } else {
+            None
+        };
+        x
+    }
+
 }
 
 lazy_static! {

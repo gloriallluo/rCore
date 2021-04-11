@@ -1,18 +1,12 @@
 use alloc::vec::Vec;
 use alloc::sync::{Weak, Arc};
 use spin::{Mutex, MutexGuard};
-use crate::config::{
-    BIG_STRIDE,
-    TRAP_CONTEXT
-};
+use crate::config::{BIG_STRIDE, TRAP_CONTEXT};
 use crate::memory::memory_set::{MemorySet, KERNEL_SPACE};
-use crate::memory::address::{
-    PhysPageNum,
-    VirtAddr
-};
+use crate::memory::address::{PhysPageNum, VirtAddr};
 use crate::trap::trap_handler;
-use crate::task::context::TaskContext;
 use crate::trap::context::TrapContext;
+use crate::task::context::TaskContext;
 use crate::task::pid::{KernelStack, PidHandle, pid_alloc};
 
 pub struct TaskControlBlock {
@@ -96,7 +90,7 @@ impl TaskControlBlock {
                 children: Vec::new(),
                 exit_code: 0,
                 pass: 0,
-                stride: 0,
+                stride: BIG_STRIDE / 16,
                 priority: 16,
                 count_time: 0
             })
@@ -120,7 +114,6 @@ impl TaskControlBlock {
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
             .ppn();
-
         // **** hold current PCB lock
         let mut inner = self.acquire_inner_lock();
         // substitute memory_set
