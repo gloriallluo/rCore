@@ -1,3 +1,4 @@
+use alloc::vec;
 use alloc::vec::Vec;
 use alloc::sync::{Weak, Arc};
 use spin::{Mutex, MutexGuard};
@@ -8,6 +9,8 @@ use crate::trap::trap_handler;
 use crate::trap::context::TrapContext;
 use crate::task::context::TaskContext;
 use crate::task::pid::{KernelStack, PidHandle, pid_alloc};
+use crate::fs::File;
+use crate::fs::stdio::{Stdin, Stdout};
 
 pub struct TaskControlBlock {
     // immutable
@@ -26,6 +29,7 @@ pub struct TaskControlBlockInner {
     pub parent: Option<Weak<TaskControlBlock>>,
     pub children: Vec<Arc<TaskControlBlock>>,
     pub exit_code: i32,
+    pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
     pub pass: usize,
     pub stride: usize,
     pub priority: usize,
@@ -54,6 +58,16 @@ impl TaskControlBlockInner {
     }
     pub fn update_pass(&mut self) {
         self.pass += self.stride;
+    }
+    // 分配一个最小的空闲文件描述符来访问一个新打开的文件
+    pub fn alloc_fd(&mut self) -> usize {
+        if let Some(fd) = (0..self.fd_table.len())
+            .find(|fd| self.fd_table[*fd].is_none()) {
+            fd
+        } else {
+            self.fd_table.push(None);
+            self.fd_table.len() - 1
+        }
     }
 }
 
@@ -89,6 +103,11 @@ impl TaskControlBlock {
                 parent: None,
                 children: Vec::new(),
                 exit_code: 0,
+                fd_table: vec![
+                    Some(Arc::new(Stdin)), // 0 -> stdin
+                    Some(Arc::new(Stdout)), // 1 -> stdout
+                    Some(Arc::new(Stdout)), // 2 -> stderr
+                ],
                 pass: 0,
                 stride: BIG_STRIDE / 16,
                 priority: 16,
@@ -148,7 +167,17 @@ impl TaskControlBlock {
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
         // push a goto_trap_return task_cx on the top of kernel stack
-        let task_cx_ptr = kernel_stack.push_on_top(TaskContext::goto_trap_return());
+        let task_cx_ptr = kernel_stack.push_on_top(
+            TaskContext::goto_trap_return());
+        // copy fd table
+        let mut new_fd_table: Vec<Option<Arc<dyn File + Send + Sync>>> = Vec::new();
+        for fd in parent_inner.fd_table.iter() {
+            if let Some(file) = fd {
+                new_fd_table.push(Some(file.clone()));
+            } else {
+                new_fd_table.push(None);
+            }
+        }
         let task_control_block = Arc::new(TaskControlBlock {
             pid: pid_handle,
             kernel_stack,
@@ -161,6 +190,7 @@ impl TaskControlBlock {
                 parent: Some(Arc::downgrade(self)),
                 children: Vec::new(),
                 exit_code: 0,
+                fd_table: new_fd_table,
                 pass: 0,
                 stride: BIG_STRIDE / 16,
                 priority: 16,

@@ -17,6 +17,7 @@ mod config;
 mod task;
 mod timer;
 mod memory;
+mod fs;
 
 extern crate alloc;
 extern crate bitflags;
