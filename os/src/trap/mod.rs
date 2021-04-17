@@ -8,7 +8,7 @@ use crate::task::{
 use crate::syscall::syscall;
 use crate::timer::set_next_trigger;
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
-use crate::task::processor::{current_trap_cx, current_user_token};
+use crate::task::processor::{current_trap_cx, current_user_token, update_time_counter};
 
 pub mod context;
 
@@ -66,8 +66,7 @@ pub fn trap_handler() -> ! {
             exit_current_and_run_next(-3);
         },
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
-            // TODO
-            // update_time_counter();
+            update_time_counter();
             set_next_trigger();
             suspend_current_and_run_next();
         },

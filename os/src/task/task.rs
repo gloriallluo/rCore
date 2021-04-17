@@ -84,7 +84,7 @@ impl TaskControlBlock {
                 trap_cx_ppn,
                 base_size: user_sp,
                 task_cx_ptr: task_cx_ptr as usize,
-                task_status: TaskStatus::Ready,
+                task_status,
                 memory_set,
                 parent: None,
                 children: Vec::new(),

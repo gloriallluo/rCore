@@ -3,7 +3,7 @@ use crate::task::{
     suspend_current_and_run_next
 };
 use crate::task::manager::add_task;
-use crate::task::processor::{current_user_token, current_task};
+use crate::task::processor::{current_user_token, current_task, set_current_priority};
 use crate::timer::{
     get_time_val,
     TimeVal
@@ -40,8 +40,7 @@ pub fn sys_get_time(ts: usize, _tz: usize) -> isize {
 
 pub fn sys_set_priority(pri: isize) -> isize {
     if pri >= 2 && pri <= isize::MAX {
-        // TODO
-        // set_current_priority(pri as usize);
+        set_current_priority(pri as usize);
         pri
     } else {
         -1 as isize

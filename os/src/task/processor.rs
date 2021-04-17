@@ -42,6 +42,7 @@ impl Processor {
                 // acquire
                 let mut task_inner = task.acquire_inner_lock();
                 let next_task_cx_ptr2 = task_inner.get_task_cx_ptr2();
+                task_inner.update_pass();
                 task_inner.task_status = TaskStatus::Running;
                 drop(task_inner);
                 // release
@@ -114,6 +115,16 @@ pub fn current_user_token() -> usize {
     let task = current_task().unwrap();
     let token = task.acquire_inner_lock().get_user_token();
     token
+}
+
+pub fn set_current_priority(pri: usize) {
+    let task = current_task().unwrap();
+    task.acquire_inner_lock().set_priority(pri);
+}
+
+pub fn update_time_counter() {
+    let task = current_task().unwrap();
+    task.acquire_inner_lock().count_time += 1;
 }
 
 pub fn current_trap_cx() -> &'static mut TrapContext {
