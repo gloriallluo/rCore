@@ -1,8 +1,8 @@
 use spin::Mutex;
 use lazy_static::*;
 use alloc::sync::Arc;
-use alloc::collections::VecDeque;
 use crate::task::task::TaskControlBlock;
+use alloc::collections::vec_deque::VecDeque;
 
 pub struct TaskManager {
     ready_queue: VecDeque<Arc<TaskControlBlock>>
