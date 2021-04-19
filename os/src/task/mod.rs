@@ -4,6 +4,7 @@ mod switch;
 mod pid;
 pub(crate) mod manager;
 pub(crate) mod processor;
+mod mail;
 
 use core::mem::drop;
 use lazy_static::*;

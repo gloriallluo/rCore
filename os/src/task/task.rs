@@ -2,15 +2,18 @@ use alloc::vec;
 use alloc::vec::Vec;
 use alloc::sync::{Weak, Arc};
 use spin::{Mutex, MutexGuard};
+use alloc::collections::vec_deque::VecDeque;
 use crate::config::{BIG_STRIDE, TRAP_CONTEXT};
 use crate::memory::memory_set::{MemorySet, KERNEL_SPACE};
 use crate::memory::address::{PhysPageNum, VirtAddr};
 use crate::trap::trap_handler;
 use crate::trap::context::TrapContext;
 use crate::task::context::TaskContext;
+use crate::task::mail::Mail;
 use crate::task::pid::{KernelStack, PidHandle, pid_alloc};
 use crate::fs::File;
 use crate::fs::stdio::{Stdin, Stdout};
+
 
 pub struct TaskControlBlock {
     // immutable
@@ -33,7 +36,8 @@ pub struct TaskControlBlockInner {
     pub pass: usize,
     pub stride: usize,
     pub priority: usize,
-    pub count_time: usize
+    pub count_time: usize,
+    pub mail_box: VecDeque<Arc<Mail>>
 }
 
 impl TaskControlBlockInner {
@@ -59,7 +63,8 @@ impl TaskControlBlockInner {
     pub fn update_pass(&mut self) {
         self.pass += self.stride;
     }
-    // 分配一个最小的空闲文件描述符来访问一个新打开的文件
+
+    /// 分配一个最小的空闲文件描述符来访问一个新打开的文件
     pub fn alloc_fd(&mut self) -> usize {
         if let Some(fd) = (0..self.fd_table.len())
             .find(|fd| self.fd_table[*fd].is_none()) {
@@ -68,6 +73,26 @@ impl TaskControlBlockInner {
             self.fd_table.push(None);
             self.fd_table.len() - 1
         }
+    }
+
+    /// 获取 mail_box 最前面的一个 Mail
+    pub fn get_mail(&mut self) -> Option<Arc<Mail>> {
+        self.mail_box.pop_front()
+    }
+
+    /// 向 mail_box 列表新插入一个
+    pub fn new_empty_mail(&mut self) -> Option<Arc<Mail>> {
+        if self.mail_box.len() == 16 { return None; }
+        let mail = Arc::new(Mail::new());
+        let ret = mail.clone();
+        self.mail_box.push_back(mail);
+        Some(ret)
+    }
+    pub fn mail_box_is_empty(&self) -> bool {
+        self.mail_box.len() == 0
+    }
+    pub fn mail_box_is_full(&self) -> bool {
+        self.mail_box.len() == 16
     }
 }
 
@@ -111,7 +136,8 @@ impl TaskControlBlock {
                 pass: 0,
                 stride: BIG_STRIDE / 16,
                 priority: 16,
-                count_time: 0
+                count_time: 0,
+                mail_box: VecDeque::new()
             })
         };
         // prepare TrapContext in user space
@@ -194,7 +220,8 @@ impl TaskControlBlock {
                 pass: 0,
                 stride: BIG_STRIDE / 16,
                 priority: 16,
-                count_time: 0
+                count_time: 0,
+                mail_box: VecDeque::new()
             }),
         });
         // add child

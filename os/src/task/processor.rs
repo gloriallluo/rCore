@@ -62,6 +62,8 @@ impl Processor {
         self.inner.borrow().current.as_ref().map(|task| Arc::clone(task))
     }
 
+
+
     pub fn mmap_current(&self, start_va: VirtAddr, end_va: VirtAddr,
                     permission: MapPermission) -> Option<isize> {
         let start_vpn = start_va.floor();
@@ -105,6 +107,10 @@ pub fn run_tasks() {
 
 pub fn take_current_task() -> Option<Arc<TaskControlBlock>> {
     PROCESSOR.take_current()
+}
+
+pub fn current_pid() -> usize {
+    PROCESSOR.current().unwrap().getpid()
 }
 
 pub fn current_task() -> Option<Arc<TaskControlBlock>> {

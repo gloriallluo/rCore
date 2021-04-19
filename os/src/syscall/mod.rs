@@ -24,6 +24,8 @@ const SYSCALL_FORK: usize = 220;
 const SYSCALL_EXEC: usize = 221;
 const SYSCALL_WAITPID: usize = 260;
 const SYSCALL_SPAWN: usize = 400;
+const SYSCALL_MAIL_READ: usize = 401;
+const SYSCALL_MAIL_WRITE: usize = 402;
 
 pub fn syscall(syscall_id: usize, args: [usize; 3], _cx: &TrapContext) -> isize {
     // println!("in syscall, syscall id {}", syscall_id);
@@ -43,6 +45,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 3], _cx: &TrapContext) -> isize 
         SYSCALL_EXEC => sys_exec(args[0] as *const u8),
         SYSCALL_SPAWN => sys_spawn(args[0] as *const u8),
         SYSCALL_WAITPID => sys_waitpid(args[0] as isize, args[1] as *mut i32),
+        SYSCALL_MAIL_READ => sys_mail_read(args[0] as *mut u8, args[1]),
+        SYSCALL_MAIL_WRITE => sys_mail_write(args[0], args[1] as *mut u8, args[2]),
         _ => panic!("Unsupported syscall_id: {}", syscall_id)
     }
 }

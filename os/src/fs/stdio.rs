@@ -34,7 +34,7 @@ impl File for Stdin {
 }
 
 impl File for Stdout {
-    fn read(&self, _user_buf: UserBuffer) -> usize{
+    fn read(&self, _user_buf: UserBuffer) -> usize {
         panic!("Cannot read from stdout!");
     }
     fn write(&self, user_buf: UserBuffer) -> usize {

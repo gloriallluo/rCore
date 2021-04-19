@@ -3,7 +3,12 @@ use crate::task::{
     suspend_current_and_run_next
 };
 use crate::task::manager::add_task;
-use crate::task::processor::{current_user_token, current_task, set_current_priority};
+use crate::task::processor::{
+    current_user_token,
+    current_task,
+    set_current_priority,
+    current_pid
+};
 use crate::timer::{
     get_time_val,
     TimeVal
@@ -48,7 +53,7 @@ pub fn sys_set_priority(pri: isize) -> isize {
 }
 
 pub fn sys_getpid() -> isize {
-    current_task().unwrap().pid.0 as isize
+    current_pid() as isize
 }
 
 pub fn sys_fork() -> isize {
