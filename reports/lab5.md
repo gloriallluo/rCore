@@ -8,6 +8,12 @@
 
 ### 实验指导
 
+本节实验实现了进程（在之前的 Task 的基础上新增加了进程标识符、`KernelStack` 数据结构、进程之间的父子关系等等），并且实现了 `fork`、`exec`、`spawn` 等系统调用，并且实现了一个命令行交互程序。在初始化的时候，会建立一个名为 `initproc` 的进程，接着由这个进程进行 `exec` 的系统调用并且执行 `usershell` 程序。
+
+-   fork 的过程：调用 `current_task.fork()`，新建一个子进程的 `TCB`，复制 `current_task` 的地址空间、内核栈、以及 TCB 里的其他参数。接着将子进程的 `a0` 寄存器置 0，并将紫禁城加入就绪队列。
+-   exec 的过程：根据应用名字找到对应的 elf 文件并将地址空间、用户栈、执行流等等赋给当前进程。
+-   回收进程资源的过程：将当前进程标为僵尸进程，将所有子进程托管给 `initproc`，并回收所有地质资源。
+
 ### 编程作业
 
 需要增加 `spawn` 的系统调用，其本质上是先 `fork` 再 `exec`，实现见 `crate::syscall::process::sys_spawn`。
@@ -24,26 +30,44 @@
 
     在 fork + exec 的例子里，在 exec 的时候才真正分配物理内存资源并将源代码及数据加载进来。
 
-2.  其实使用了题(1)的策略之后，fork + exec 所带来的无效资源的问题已经基本被解决了，但是今年来 fork 还是在被不断的批判，那么到底是什么正在”杀死”fork？可以参考 [论文](https://www.microsoft.com/en-us/research/uploads/prod/2019/04/fork-hotos19.pdf) ，**注意**：回答无明显错误就给满分，出这题只是想引发大家的思考，完全不要求看论文，球球了，别卷了。
+    
 
-3.  **fork 当年被设计并称道肯定是有其好处的。请使用带初始参数的 spawn 重写如下 fork 程序，然后描述 fork 有那些好处。注意:使用”伪代码”传达意思即可，spawn 接口可以自定义。可以写多个文件。**
+2.  **其实使用了题(1)的策略之后，fork + exec 所带来的无效资源的问题已经基本被解决了，但是今年来 fork 还是在被不断的批判，那么到底是什么正在”杀死”fork？**
 
-    ```
+    -   fork 经过漫长的演化，对于使用者已经难以理解。
+    -   因为对地址空间的复制，导致对于 User Mode 的抽象做的不是很好。
+    -   fork 不是线程安全的。
+    -   安全性不好，子进程继承父进程的所有资源违反了最小特权原则。
+    -   fork 很慢。
+    -   fork 的可扩展性较差。
+    -   即使使用了 Copy On Write 也有可能导致过度分配内存。
+
+    
+
+3.  **fork 当年被设计并称道肯定是有其好处的。请使用带初始参数的 spawn 重写如下 fork 程序，然后描述 fork 有那些好处。注意：使用”伪代码”传达意思即可，spawn 接口可以自定义。可以写多个文件。**
+
+    ```rust
     fn main() {
         let a = get_a();
-        spawn("add\0");
+        /// `spawn` params: (name, args)
+        spawn("add", a);
         println!("a = {}", a);
         0
     }
-    
+    ```
+
+    ```rust
     // add.rs
     fn main() {
-    	let a = get_a();
+        let argv = env::args();
+    	let a = argv[0];
     	let b = get_b();
     	println!("a + b = {}", a + b);
     	exit(0);
     }
     ```
+
+    
 
 4.  **描述进程执行的几种状态，以及 fork/exec/wait/exit 对于状态的影响。**
 

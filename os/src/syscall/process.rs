@@ -1,13 +1,14 @@
+use alloc::sync::Arc;
 use crate::task::{
     exit_current_and_run_next,
     suspend_current_and_run_next
 };
 use crate::task::manager::add_task;
 use crate::task::processor::{
-    current_user_token,
     current_task,
-    set_current_priority,
-    current_pid
+    current_pid,
+    current_user_token,
+    set_current_priority
 };
 use crate::timer::{
     get_time_val,
@@ -20,7 +21,6 @@ use crate::memory::page_table::{
 };
 use crate::memory::address::VirtAddr;
 use crate::loader::get_app_data_by_name;
-use alloc::sync::Arc;
 
 pub fn sys_exit(exit_code: i32) -> ! {
     info!("[kernel] Application exited with code {}", exit_code);
@@ -74,12 +74,10 @@ pub fn sys_exec(path: *const u8) -> isize {
     let token = current_user_token();
     let path = translated_str(token, path);
     if let Some(data) = get_app_data_by_name(path.as_str()) {
-        // println!("exec~");
         let task = current_task().unwrap();
         task.exec(data);
         0
     } else {
-        // println!("exec fail");
         -1
     }
 }

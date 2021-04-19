@@ -6,5 +6,5 @@ rustflags = [
     "-Clink-args=-Tsrc/linker.ld",
 ]
 
-[net]
-git-fetch-with-cli = true
+#[net]
+#git-fetch-with-cli = true
