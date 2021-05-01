@@ -6,16 +6,18 @@
 
 #[macro_use]
 pub mod console;
+pub mod ch8;
 mod lang_items;
 mod syscall;
 
+extern crate alloc;
 extern crate core;
 #[macro_use]
 extern crate bitflags;
 
 use buddy_system_allocator::LockedHeap;
-pub use console::{STDIN, STDOUT};
-use syscall::*;
+pub use console::{flush, STDIN, STDOUT};
+pub use syscall::*;
 
 const USER_HEAP_SIZE: usize = 16384;
 
@@ -71,7 +73,7 @@ impl TimeVal {
 #[repr(C)]
 #[derive(Debug)]
 pub struct Stat {
-    /// ID of drivers containing file
+    /// ID of device containing file
     pub dev: u64,
     /// inode number
     pub ino: u64,
@@ -112,6 +114,9 @@ pub fn open(path: &str, flags: OpenFlags) -> isize {
 }
 
 pub fn close(fd: usize) -> isize {
+    if fd == STDOUT {
+        console::flush();
+    }
     sys_close(fd)
 }
 
@@ -144,6 +149,7 @@ pub fn mail_write(pid: usize, buf: &[u8]) -> isize {
 }
 
 pub fn exit(exit_code: i32) -> ! {
+    console::flush();
     sys_exit(exit_code);
 }
 
@@ -175,7 +181,6 @@ pub fn set_priority(prio: isize) -> isize {
     sys_set_priority(prio)
 }
 
-/// 等待任意一个子进程结束
 pub fn wait(exit_code: &mut i32) -> isize {
     loop {
         match sys_waitpid(-1, exit_code as *mut _) {
@@ -189,7 +194,6 @@ pub fn wait(exit_code: &mut i32) -> isize {
     }
 }
 
-/// 等待一个特定的子进程结束
 pub fn waitpid(pid: usize, exit_code: &mut i32) -> isize {
     loop {
         match sys_waitpid(pid as isize, exit_code as *mut _) {
@@ -221,3 +225,6 @@ pub fn munmap(start: usize, len: usize) -> isize {
 pub fn spawn(path: &str) -> isize {
     sys_spawn(path)
 }
+
+pub fn dup(fd: usize) -> isize { sys_dup(fd) }
+pub fn pipe(pipe_fd: &mut [usize]) -> isize { sys_pipe(pipe_fd) }
