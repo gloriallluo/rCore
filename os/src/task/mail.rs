@@ -57,6 +57,8 @@ impl Mail {
 }
 
 impl File for Mail {
+    fn readable(&self) -> bool { true }
+    fn writable(&self) -> bool { true }
     fn read(&self, buf: UserBuffer) -> usize {
         self.buffer.lock().read_all(buf)
     }

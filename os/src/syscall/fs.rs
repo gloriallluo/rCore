@@ -1,3 +1,4 @@
+use alloc::sync::Arc;
 use crate::fs::pipe::make_pipe;
 use crate::trap::context::TrapContext;
 use crate::task::processor::{current_user_token, current_task, current_pid};
@@ -5,10 +6,12 @@ use crate::memory::address::{VirtAddr, VirtPageNum};
 use crate::memory::page_table::{
     PageTable,
     UserBuffer,
+    translated_str,
     translated_refmut,
     translated_byte_buffer
 };
 use crate::fs::File;
+use crate::fs::inode::{OpenFlags, open_file};
 use crate::task::manager::find_task;
 
 
@@ -67,6 +70,21 @@ pub fn sys_read(fd: usize, buf: *const u8, len: usize) -> isize {
     }
 }
 
+pub fn sys_open(path: *const u8, flags: u32) -> isize {
+    let task = current_task().unwrap();
+    let token = current_user_token();
+    let path = translated_str(token, path);
+    if let Some(inode) = open_file(
+        path.as_str(), OpenFlags::from_bits(flags).unwrap()) {
+        let mut inner = task.acquire_inner_lock();
+        let fd = inner.alloc_fd();
+        inner.fd_table[fd] = Some(inode);
+        fd as isize
+    } else {
+        -1
+    }
+}
+
 pub fn sys_close(fd: usize) -> isize {
     let task = current_task().unwrap();
     let mut inner = task.acquire_inner_lock();
@@ -89,6 +107,16 @@ pub fn sys_pipe(pipe: *mut usize) -> isize {
     *translated_refmut(token, pipe) = read_fd;
     *translated_refmut(token, unsafe { pipe.add(1) }) = write_fd;
     0
+}
+
+pub fn sys_dup(fd: usize) -> isize {
+    let task = current_task().unwrap();
+    let mut inner = task.acquire_inner_lock();
+    if fd >= inner.fd_table.len() { return -1; }
+    if inner.fd_table[fd].is_none() { return -1; }
+    let new_fd = inner.alloc_fd();
+    inner.fd_table[new_fd] = Some(Arc::clone(inner.fd_table[fd].as_ref().unwrap()));
+    new_fd as isize
 }
 
 pub fn sys_mail_read(buf: *mut u8, len: usize) -> isize {

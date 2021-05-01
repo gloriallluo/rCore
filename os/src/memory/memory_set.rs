@@ -17,7 +17,12 @@ use crate::memory::frame_allocator::{
     frame_alloc
 };
 use crate::config::{
-    PAGE_SIZE, MEMORY_END, USER_STACK_SIZE, TRAMPOLINE, TRAP_CONTEXT
+    PAGE_SIZE,
+    MEMORY_END,
+    USER_STACK_SIZE,
+    TRAMPOLINE,
+    TRAP_CONTEXT,
+    MMIO
 };
 
 
@@ -38,6 +43,10 @@ lazy_static! {
     pub static ref KERNEL_SPACE: Arc<Mutex<MemorySet>> = Arc::new(
         Mutex::new(MemorySet::new_kernel())
     );
+}
+
+pub fn kernel_token() -> usize {
+    KERNEL_SPACE.lock().token()
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -185,6 +194,15 @@ impl MemorySet {
             MapType::Identical,
             MapPermission::R | MapPermission::W,
         ), None);
+        println!("mapping memory-mapped registers");
+        for pair in MMIO {
+            memory_set.push(MapArea::new(
+                (*pair).0.into(),
+                ((*pair).0 + (*pair).1).into(),
+                MapType::Identical,
+                MapPermission::R | MapPermission::W,
+            ), None);
+        }
         memory_set
     }
 

@@ -71,7 +71,7 @@ impl TimeVal {
 #[repr(C)]
 #[derive(Debug)]
 pub struct Stat {
-    /// ID of device containing file
+    /// ID of drivers containing file
     pub dev: u64,
     /// inode number
     pub ino: u64,

@@ -6,5 +6,5 @@ rustflags = [
     "-Clink-arg=-Tsrc/linker.ld", "-Cforce-frame-pointers=yes"
 ]
 
-#[net]
-#git-fetch-with-cli = true
+[net]
+git-fetch-with-cli = true

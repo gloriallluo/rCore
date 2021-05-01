@@ -12,12 +12,12 @@ mod lang_items;
 mod sbi;
 mod trap;
 mod syscall;
-mod loader;
 mod config;
 mod task;
 mod timer;
 mod memory;
 mod fs;
+mod drivers;
 
 extern crate alloc;
 extern crate bitflags;
@@ -45,7 +45,8 @@ pub extern "C" fn rust_main() {
     trap::init();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
-    loader::list_apps();
-    task::processor::run_tasks();
+    fs::inode::list_apps();
+    task::add_initproc();
+    task::run_tasks();
     panic!("Unreachable in rust_main!");
 }
