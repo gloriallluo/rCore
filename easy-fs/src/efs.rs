@@ -22,11 +22,9 @@ pub struct EasyFileSystem {
 type DataBlock = [u8; BLOCK_SZ];
 
 impl EasyFileSystem {
-    pub fn create(
-        block_device: Arc<dyn BlockDevice>,
-        total_blocks: u32,
-        inode_bitmap_blocks: u32,
-    ) -> Arc<Mutex<Self>> {
+    pub fn create(block_device: Arc<dyn BlockDevice>,
+                  total_blocks: u32,
+                  inode_bitmap_blocks: u32) -> Arc<Mutex<Self>> {
         // calculate block size of areas & create bitmaps
         let inode_bitmap = Bitmap::new(1, inode_bitmap_blocks as usize);
         let inode_num = inode_bitmap.maximum();
@@ -116,10 +114,7 @@ impl EasyFileSystem {
         let (block_id, block_offset) = efs.lock().get_disk_inode_pos(0);
         // release efs lock
         Inode::new(
-            block_id,
-            block_offset,
-            Arc::clone(efs),
-            block_device,
+            block_id, block_offset, Arc::clone(efs), block_device
         )
     }
 

@@ -11,22 +11,20 @@ pub struct BlockCache {
     cache: [u8; BLOCK_SZ],
     block_id: usize,
     block_device: Arc<dyn BlockDevice>,
-    modified: bool,
+    modified: bool
 }
 
 impl BlockCache {
     /// Load a new BlockCache from disk.
-    pub fn new(
-        block_id: usize, 
-        block_device: Arc<dyn BlockDevice>
-    ) -> Self {
+    pub fn new(block_id: usize,
+               block_device: Arc<dyn BlockDevice>) -> Self {
         let mut cache = [0u8; BLOCK_SZ];
         block_device.read_block(block_id, &mut cache);
         Self {
             cache,
             block_id,
             block_device,
-            modified: false,
+            modified: false
         }
     }
 
@@ -82,11 +80,9 @@ impl BlockCacheManager {
         Self { queue: VecDeque::new() }
     }
 
-    pub fn get_block_cache(
-        &mut self,
-        block_id: usize,
-        block_device: Arc<dyn BlockDevice>,
-    ) -> Arc<Mutex<BlockCache>> {
+    pub fn get_block_cache(&mut self,
+                           block_id: usize,
+                           block_device: Arc<dyn BlockDevice>) -> Arc<Mutex<BlockCache>> {
         if let Some(pair) = self.queue
             .iter()
             .find(|pair| pair.0 == block_id) {
@@ -120,9 +116,7 @@ lazy_static! {
     );
 }
 
-pub fn get_block_cache(
-    block_id: usize,
-    block_device: Arc<dyn BlockDevice>
-) -> Arc<Mutex<BlockCache>> {
+pub fn get_block_cache(block_id: usize,
+                       block_device: Arc<dyn BlockDevice>) -> Arc<Mutex<BlockCache>> {
     BLOCK_CACHE_MANAGER.lock().get_block_cache(block_id, block_device)
 }

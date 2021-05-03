@@ -20,9 +20,7 @@ pub struct OSInodeInner {
 }
 
 impl OSInode {
-    pub fn new(readable: bool,
-               writable: bool,
-               inode: Arc<Inode>) -> Self {
+    pub fn new(readable: bool, writable: bool, inode: Arc<Inode>) -> Self {
         Self {
             readable,
             writable,
@@ -111,6 +109,20 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
                 ))
             })
     }
+}
+
+pub fn find_file_id(name: &str) -> Option<u32> {
+    ROOT_INODE.get_inode_id(name)
+}
+
+pub fn link_file(name: &str, old_file_id: u32) -> Option<Arc<OSInode>> {
+    ROOT_INODE.duplicate(name, old_file_id).map(|inode| {
+        Arc::new(OSInode::new(false, false, inode))
+    })
+}
+
+pub fn unlink_file(name: &str) -> bool {
+    ROOT_INODE.dealloc_dir_entry(name).is_some()
 }
 
 impl File for OSInode {

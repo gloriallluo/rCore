@@ -11,8 +11,9 @@ use crate::memory::page_table::{
     translated_byte_buffer
 };
 use crate::fs::File;
-use crate::fs::inode::{OpenFlags, open_file};
+use crate::fs::inode::{OpenFlags, open_file, find_file, find_file_id, link_file, unlink_file};
 use crate::task::manager::find_task;
+use bitflags::_core::panicking::panic_fmt;
 
 
 fn security_check(buf: usize, len: usize) -> bool {
@@ -70,7 +71,7 @@ pub fn sys_read(fd: usize, buf: *const u8, len: usize) -> isize {
     }
 }
 
-pub fn sys_open(path: *const u8, flags: u32) -> isize {
+pub fn sys_open(_fd: usize, path: *const u8, flags: u32, _mode: u32) -> isize {
     let task = current_task().unwrap();
     let token = current_user_token();
     let path = translated_str(token, path);
@@ -152,4 +153,27 @@ pub fn sys_mail_write(pid: usize, buf: *mut u8, len: usize) -> isize {
     } else {
         -1
     }
+}
+
+// TODO
+pub fn sys_linkat(_old_fd: i32, old_path: *const u8,
+                  _new_fd: i32, new_path: *const u8,
+                  _flags: u32) -> isize {
+    let token = current_user_token();
+    let old_path = translated_str(token, old_path);
+    let new_path = translated_str(token, new_path);
+    if old_path == new_path { return -1; }
+    if let Some(old_id) = find_file_id(old_path.as_str()) {
+        let inode = link_file(new_path.as_str(), old_id);
+        return if inode.is_some() { 0 } else { -1 };
+    } else {
+        -1
+    }
+}
+
+// TODO
+pub fn sys_unlinkat(_fd: i32, path: *const u8, _flags: u32) -> isize {
+    let token = current_user_token();
+    let path = translated_str(token, path);
+    if unlink_file(path.as_str()) { 0 } else { -1 }
 }

@@ -2,7 +2,7 @@ use core::fmt::{Debug, Formatter, Result};
 use super::{
     BLOCK_SZ,
     BlockDevice,
-    get_block_cache,
+    get_block_cache
 };
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -40,14 +40,12 @@ impl Debug for SuperBlock {
 }
 
 impl SuperBlock {
-    pub fn initialize(
-        &mut self,
-        total_blocks: u32,
-        inode_bitmap_blocks: u32,
-        inode_area_blocks: u32,
-        data_bitmap_blocks: u32,
-        data_area_blocks: u32,
-    ) {
+    pub fn initialize(&mut self,
+                      total_blocks: u32,
+                      inode_bitmap_blocks: u32,
+                      inode_area_blocks: u32,
+                      data_bitmap_blocks: u32,
+                      data_area_blocks: u32) {
         *self = Self {
             magic: EFS_MAGIC,
             total_blocks,
@@ -65,7 +63,7 @@ impl SuperBlock {
 #[derive(PartialEq)]
 pub enum DiskInodeType {
     File,
-    Directory,
+    Directory
 }
 
 type IndirectBlock = [u32; BLOCK_SZ / 4];
@@ -153,12 +151,10 @@ impl DiskInode {
             })
         }
     }
-    pub fn increase_size(
-        &mut self,
-        new_size: u32,
-        new_blocks: Vec<u32>,
-        block_device: &Arc<dyn BlockDevice>,
-    ) {
+    pub fn increase_size(&mut self,
+                         new_size: u32,
+                         new_blocks: Vec<u32>,
+                         block_device: &Arc<dyn BlockDevice>) {
         let mut current_blocks = self.data_blocks();
         self.size = new_size;
         let mut total_blocks = self.data_blocks();
@@ -236,7 +232,6 @@ impl DiskInode {
     }
 
     /// Clear size to zero and return blocks that should be deallocated.
-    ///
     /// We will clear the block contents to zero later.
     pub fn clear_size(&mut self, block_device: &Arc<dyn BlockDevice>) -> Vec<u32> {
         let mut v: Vec<u32> = Vec::new();
@@ -324,17 +319,14 @@ impl DiskInode {
         self.indirect2 = 0;
         v
     }
-    pub fn read_at(
-        &self,
-        offset: usize,
-        buf: &mut [u8],
-        block_device: &Arc<dyn BlockDevice>,
-    ) -> usize {
+
+    pub fn read_at(&self,
+                   offset: usize,
+                   buf: &mut [u8],
+                   block_device: &Arc<dyn BlockDevice>) -> usize {
         let mut start = offset;
         let end = (offset + buf.len()).min(self.size as usize);
-        if start >= end {
-            return 0;
-        }
+        if start >= end { return 0; }
         let mut start_block = start / BLOCK_SZ;
         let mut read_size = 0usize;
         loop {
@@ -361,13 +353,12 @@ impl DiskInode {
         }
         read_size
     }
+
     /// File size must be adjusted before.
-    pub fn write_at(
-        &mut self,
-        offset: usize,
-        buf: &[u8],
-        block_device: &Arc<dyn BlockDevice>,
-    ) -> usize {
+    pub fn write_at(&mut self,
+                    offset: usize,
+                    buf: &[u8],
+                    block_device: &Arc<dyn BlockDevice>) -> usize {
         let mut start = offset;
         let end = (offset + buf.len()).min(self.size as usize);
         assert!(start <= end);
@@ -411,7 +402,7 @@ impl DirEntry {
     pub fn empty() -> Self {
         Self {
             name: [0u8; NAME_LENGTH_LIMIT + 1],
-            inode_number: 0,
+            inode_number: 0
         }
     }
     pub fn new(name: &str, inode_number: u32) -> Self {
@@ -419,7 +410,7 @@ impl DirEntry {
         &mut bytes[..name.len()].copy_from_slice(name.as_bytes());
         Self {
             name: bytes,
-            inode_number,
+            inode_number
         }
     }
     pub fn as_bytes(&self) -> &[u8] {
