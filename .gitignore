@@ -8,7 +8,6 @@ target/
 #tools/
 
 # OS generated files
-/os/src/link_app.S
 /os/src/linker.ld
 user/src/bin/
 user/build/

@@ -7,7 +7,7 @@ use crate::memory::page_table::UserBuffer;
 pub(crate) mod pipe;
 pub(crate) mod stdio;
 pub(crate) mod inode;
-pub mod mail;
+pub(crate) mod mail;
 
 #[repr(C)]
 #[derive(Debug)]
