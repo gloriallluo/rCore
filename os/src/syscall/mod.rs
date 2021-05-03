@@ -4,6 +4,7 @@ use crate::syscall::fs::*;
 use crate::syscall::mem::*;
 use crate::syscall::process::*;
 use crate::trap::context::TrapContext;
+use crate::fs::Stat;
 
 mod fs;
 mod process;
@@ -18,6 +19,7 @@ const SYSCALL_CLOSE: usize = 57;
 const SYSCALL_PIPE: usize = 59;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
+const SYSCALL_FSTAT: usize = 80;
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_YIELD: usize = 124;
 const SYSCALL_SET_PRIORITY: usize = 140;
@@ -36,16 +38,18 @@ pub fn syscall(syscall_id: usize, args: [usize; 3], _cx: &TrapContext) -> isize 
     // println!("in syscall, syscall id {}", syscall_id);
     match syscall_id {
         SYSCALL_DUP => sys_dup(args[0]),
-        SYSCALL_LINKAT => sys_linkat(args[0], args[1] as *const u8,
-                                     args[2], _cx.x[13] as *const u8,
-                                     _cx.x[14]),
-        SYSCALL_UNLINKAT => sys_unlinkat(args[0], args[1] as *const u8, args[2]),
+        SYSCALL_LINKAT => sys_linkat(args[0] as i32, args[1] as *const u8,
+                                     args[2] as i32, _cx.x[13] as *const u8,
+                                     _cx.x[14] as u32),
+        SYSCALL_UNLINKAT => sys_unlinkat(args[0] as i32, args[1] as *const u8,
+                                         args[2] as u32),
         SYSCALL_OPEN => sys_open(args[0], args[1] as *const u8,
                                  args[2] as u32, _cx.x[13] as u32),
         SYSCALL_CLOSE => sys_close(args[0]),
         SYSCALL_PIPE => sys_pipe(args[0] as *mut usize),
         SYSCALL_READ => sys_read(args[0], args[1] as *const u8, args[2]),
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2], _cx),
+        SYSCALL_FSTAT => sys_fstat(args[0], args[1] as *mut Stat),
         SYSCALL_EXIT => sys_exit(args[0] as i32),
         SYSCALL_YIELD => sys_yield(),
         SYSCALL_GET_TIME => sys_get_time(args[0], args[1]),

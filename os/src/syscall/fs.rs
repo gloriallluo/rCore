@@ -10,10 +10,9 @@ use crate::memory::page_table::{
     translated_refmut,
     translated_byte_buffer
 };
-use crate::fs::File;
-use crate::fs::inode::{OpenFlags, open_file, find_file, find_file_id, link_file, unlink_file};
+use crate::fs::{File, Stat};
+use crate::fs::inode::{OpenFlags, open_file, find_file_id, link_file, unlink_file};
 use crate::task::manager::find_task;
-use bitflags::_core::panicking::panic_fmt;
 
 
 fn security_check(buf: usize, len: usize) -> bool {
@@ -176,4 +175,14 @@ pub fn sys_unlinkat(_fd: i32, path: *const u8, _flags: u32) -> isize {
     let token = current_user_token();
     let path = translated_str(token, path);
     if unlink_file(path.as_str()) { 0 } else { -1 }
+}
+
+// TODO
+pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
+    let task = current_task().unwrap();
+    let inner = task.acquire_inner_lock();
+    if fd >= inner.fd_table.len() { return -1; }
+    if inner.fd_table[fd].is_none() { return -1; }
+    unsafe { inner.fd_table[fd].as_ref().unwrap().stat(&mut (*st)); }
+    0
 }

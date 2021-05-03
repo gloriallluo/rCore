@@ -10,7 +10,7 @@ use crate::memory::address::{PhysPageNum, VirtAddr};
 use crate::trap::trap_handler;
 use crate::trap::context::TrapContext;
 use crate::task::context::TaskContext;
-use crate::task::mail::Mail;
+use crate::fs::mail::Mail;
 use crate::task::pid::{KernelStack, PidHandle, pid_alloc};
 use crate::fs::File;
 use crate::fs::stdio::{Stdin, Stdout};

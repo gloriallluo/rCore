@@ -33,7 +33,7 @@ impl Inode {
         }
     }
 
-    fn read_disk_inode<V>(&self, f: impl FnOnce(&DiskInode) -> V) -> V {
+    pub fn read_disk_inode<V>(&self, f: impl FnOnce(&DiskInode) -> V) -> V {
         // load block with certain block_id into cache
         get_block_cache(
             self.block_id,
@@ -87,9 +87,8 @@ impl Inode {
     }
 
     pub fn get_inode_id(&self, name: &str) -> Option<u32> {
-        let fs = self.fs.lock();
         self.read_disk_inode(|disk_inode| {
-            self.find_inode_id(name, disk_inode).map(|inode_id| { inode_id })
+            self.find_inode_id(name, disk_inode)
         })
     }
 
@@ -130,7 +129,7 @@ impl Inode {
     pub fn dealloc_dir_entry(&self, name: &str) -> Option<u32> {
         self.modify_disk_inode(|root_inode| {
             assert!(root_inode.is_dir());
-            let file_count = (disk_inode.size as usize) / DIRENT_SZ;
+            let file_count = (root_inode.size as usize) / DIRENT_SZ;
             let mut dirent = DirEntry::empty();
             for i in 0..file_count {
                 assert_eq!(
@@ -247,5 +246,30 @@ impl Inode {
                 fs.dealloc_data(data_block);
             }
         });
+    }
+
+    pub fn nlink(&self, inode: &Arc<Inode>) -> i32 {
+        let fs = self.fs.lock();
+        let mut nlink = 0;
+        self.read_disk_inode(|root_inode| {
+            assert!(root_inode.is_dir());
+            let file_count = (root_inode.size as usize) / DIRENT_SZ;
+            let mut dirent = DirEntry::empty();
+            for i in 0..file_count {
+                assert_eq!(
+                    root_inode.read_at(
+                        DIRENT_SZ * i,
+                        dirent.as_bytes_mut(),
+                        &self.block_device
+                    ),
+                    DIRENT_SZ,
+                );
+                let (block_id, block_off) = fs.get_disk_inode_pos(dirent.inode_number());
+                if block_id == inode.block_id as u32 && block_off == inode.block_offset {
+                    nlink += 1;
+                }
+            }
+        });
+        return nlink;
     }
 }

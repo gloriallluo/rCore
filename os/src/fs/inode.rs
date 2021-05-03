@@ -4,7 +4,7 @@ use lazy_static::*;
 use bitflags::*;
 use alloc::vec::Vec;
 use spin::Mutex;
-use crate::fs::File;
+use crate::fs::{File, Stat, StatMode};
 use crate::memory::page_table::UserBuffer;
 use crate::drivers::block::BLOCK_DEVICE;
 
@@ -149,5 +149,13 @@ impl File for OSInode {
             total_write_size += write_size;
         }
         total_write_size
+    }
+    fn stat(&self, stat: &mut Stat) {
+        stat.set_empty();
+        let inode = self.inner.lock().inode.clone();
+        inode.read_disk_inode(|disk_inode| {
+            stat.mode = if disk_inode.is_dir() { StatMode::DIR } else { StatMode::FILE };
+            stat.nlink = ROOT_INODE.nlink(&inode) as u32;
+        });
     }
 }

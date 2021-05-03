@@ -72,7 +72,7 @@ impl Drop for BlockCache {
 const BLOCK_CACHE_SIZE: usize = 16;
 
 pub struct BlockCacheManager {
-    queue: VecDeque<(usize, Arc<Mutex<BlockCache>>)>,
+    queue: VecDeque<(usize, Arc<Mutex<BlockCache>>)>
 }
 
 impl BlockCacheManager {

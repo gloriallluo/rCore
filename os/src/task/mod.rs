@@ -1,22 +1,23 @@
+use alloc::sync::Arc;
+use core::mem::drop;
+
+use lazy_static::*;
+
+pub use processor::run_tasks;
+
+use crate::fs::inode::{open_file, OpenFlags};
+use crate::memory::address::VirtAddr;
+use crate::memory::memory_set::MapPermission;
+use crate::task::manager::add_task;
+use crate::task::processor::{PROCESSOR, schedule, take_current_task};
+use crate::task::task::{TaskControlBlock, TaskStatus};
+
 pub mod context;
 mod task;
 mod switch;
 mod pid;
 pub(crate) mod manager;
 pub(crate) mod processor;
-mod mail;
-
-use core::mem::drop;
-use lazy_static::*;
-use alloc::sync::Arc;
-use crate::fs::inode::{OpenFlags, open_file};
-use crate::memory::address::VirtAddr;
-use crate::memory::memory_set::MapPermission;
-use crate::task::manager::add_task;
-use crate::task::task::{TaskControlBlock, TaskStatus};
-use crate::task::processor::{take_current_task, schedule, PROCESSOR};
-
-pub use processor::run_tasks;
 
 pub fn suspend_current_and_run_next() {
     // There must be an application running.

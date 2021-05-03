@@ -1,4 +1,4 @@
-use crate::fs::File;
+use crate::fs::{File, Stat};
 use crate::memory::page_table::UserBuffer;
 use alloc::sync::Arc;
 use spin::Mutex;
@@ -65,5 +65,9 @@ impl File for Mail {
     // 从 UserBuffer 写入 Mail
     fn write(&self, buf: UserBuffer) -> usize {
         self.buffer.lock().write_all(buf)
+    }
+
+    fn stat(&self, stat: &mut Stat) {
+        stat.set_empty();
     }
 }
