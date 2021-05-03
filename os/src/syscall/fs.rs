@@ -154,7 +154,6 @@ pub fn sys_mail_write(pid: usize, buf: *mut u8, len: usize) -> isize {
     }
 }
 
-// TODO
 pub fn sys_linkat(_old_fd: i32, old_path: *const u8,
                   _new_fd: i32, new_path: *const u8,
                   _flags: u32) -> isize {
@@ -170,19 +169,19 @@ pub fn sys_linkat(_old_fd: i32, old_path: *const u8,
     }
 }
 
-// TODO
 pub fn sys_unlinkat(_fd: i32, path: *const u8, _flags: u32) -> isize {
     let token = current_user_token();
     let path = translated_str(token, path);
     if unlink_file(path.as_str()) { 0 } else { -1 }
 }
 
-// TODO
 pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
+    let token = current_user_token();
     let task = current_task().unwrap();
     let inner = task.acquire_inner_lock();
     if fd >= inner.fd_table.len() { return -1; }
     if inner.fd_table[fd].is_none() { return -1; }
-    unsafe { inner.fd_table[fd].as_ref().unwrap().stat(&mut (*st)); }
+    let st = translated_refmut(token, st);
+    inner.fd_table[fd].as_ref().unwrap().stat(&mut (*st));
     0
 }

@@ -213,10 +213,8 @@ pub fn translated_ref<T>(token: usize, ptr: *const T) -> &'static T {
 
 /// 将虚拟地址 ptr 翻译成当前进程地址空间的物理地址
 pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
-    //println!("into translated_refmut!");
     let page_table = PageTable::from_token(token);
     let va = ptr as usize;
-    //println!("translated_refmut: before translate_va");
     page_table.translate_va(VirtAddr::from(va)).unwrap().get_mut()
 }
 

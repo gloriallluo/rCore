@@ -1,6 +1,6 @@
 use easy_fs::{
     BlockDevice,
-    EasyFileSystem,
+    EasyFileSystem
 };
 use std::fs::{File, OpenOptions, read_dir};
 use std::io::{Read, Write, Seek, SeekFrom};

@@ -96,5 +96,5 @@ pub fn trap_return() -> ! {
 
 #[no_mangle]
 pub fn trap_from_kernel() -> ! {
-    panic!("a trap from kernel!");
+    panic!("a trap {:?} from kernel!", scause::read().cause());
 }

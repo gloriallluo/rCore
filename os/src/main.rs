@@ -34,18 +34,17 @@ fn clear_bss() {
 }
 
 global_asm!(include_str!("entry.asm"));
-global_asm!(include_str!("link_app.S"));
+// global_asm!(include_str!("link_app.S"));
 
 #[no_mangle]
 pub extern "C" fn rust_main() {
     clear_bss();
     println!("[kernel] Hello, world!");
     memory::init();
-    task::add_initproc();
     trap::init();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
-    fs::inode::list_apps();
+    fs::list_apps();
     task::add_initproc();
     task::run_tasks();
     panic!("Unreachable in rust_main!");

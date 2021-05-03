@@ -4,6 +4,9 @@ MODE := release
 KERNEL_ELF := target/$(TARGET)/$(MODE)/os
 KERNEL_BIN := $(KERNEL_ELF).bin
 DISASM_TMP := target/$(TARGET)/$(MODE)/asm
+FS_IMG := ../user/target/$(TARGET)/$(MODE)/fs.img
+SDCARD := /dev/sdb
+APPS := ../user/src/bin/*
 
 # BOARD
 BOARD ?= qemu
@@ -20,7 +23,7 @@ endif
 
 # Run K210
 K210-SERIALPORT	= /dev/ttyUSB0
-K210-BURNER = ../tools/kflash.py
+K210-BURNER	= ../tools/kflash.py
 
 # Binutils
 OBJDUMP := rust-objdump --arch-name=riscv64
@@ -29,7 +32,7 @@ OBJCOPY := rust-objcopy --binary-architecture=riscv64
 # Disassembly
 DISASM ?= -x
 
-build: env $(KERNEL_BIN)
+build: env $(KERNEL_BIN) $(FS_IMG)
 
 env:
 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
@@ -37,11 +40,21 @@ env:
 	rustup component add rust-src
 	rustup component add llvm-tools-preview
 
+sdcard: $(FS_IMG)
+	@echo "Are you sure write to $(SDCARD) ? [y/N] " && read ans && [ $${ans:-N} = y ]
+	@sudo dd if=/dev/zero of=$(SDCARD) bs=1048576 count=16
+	@sudo dd if=$(FS_IMG) of=$(SDCARD)
+
 $(KERNEL_BIN): kernel
 	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
 
+$(FS_IMG): $(APPS)
+	@cd ../easy-fs-fuse && cargo run --release -- -s ../user/build/elf/ -t ../user/target/riscv64gc-unknown-none-elf/release/
+
+$(APPS):
+	@cd ../user && make all CHAPTER=7
+
 kernel:
-	@cd ../user && make build
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
 	@cargo build --release --features "board_$(BOARD)"
@@ -49,9 +62,6 @@ kernel:
 
 clean:
 	@cargo clean
-
-dump: $(KERNEL_ELF)
-	@$(OBJDUMP) -S $(KERNEL_ELF) > $(DISASM_TMP)
 
 disasm: kernel
 	@$(OBJDUMP) $(DISASM) $(KERNEL_ELF) | less
@@ -63,9 +73,6 @@ disasm-vim: kernel
 
 run: run-inner
 
-#tools:
-#	(which $(K210-BURNER)) || (cd .. && git clone https://github.com/sipeed/kflash.py.git && mv kflash.py tools)
-
 run-inner: build
 ifeq ($(BOARD),qemu)
 	@qemu-system-riscv64 \
@@ -76,6 +83,7 @@ ifeq ($(BOARD),qemu)
 		-drive file=$(FS_IMG),if=none,format=raw,id=x0 \
         -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 else
+	(which $(K210-BURNER)) || (cd .. && git clone https://github.com/sipeed/kflash.py.git && mv kflash.py tools)
 	@cp $(BOOTLOADER) $(BOOTLOADER).copy
 	@dd if=$(KERNEL_BIN) of=$(BOOTLOADER).copy bs=$(K210_BOOTLOADER_SIZE) seek=1
 	@mv $(BOOTLOADER).copy $(KERNEL_BIN)
