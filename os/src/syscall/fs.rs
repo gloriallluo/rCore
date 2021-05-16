@@ -182,6 +182,6 @@ pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
     if fd >= inner.fd_table.len() { return -1; }
     if inner.fd_table[fd].is_none() { return -1; }
     let st = translated_refmut(token, st);
-    inner.fd_table[fd].as_ref().unwrap().stat(&mut (*st));
+    inner.fd_table[fd].as_ref().unwrap().stat(st);
     0
 }
