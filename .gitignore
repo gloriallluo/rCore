@@ -5,7 +5,6 @@
 # will have compiled files and executables
 debug/
 target/
-#tools/
 
 # OS generated files
 /os/src/linker.ld

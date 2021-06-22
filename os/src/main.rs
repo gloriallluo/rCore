@@ -6,6 +6,8 @@
 #![feature(alloc_error_handler)] // alloc 错误处理
 #![feature(const_in_array_repeat_expressions)]
 
+use core::env;
+
 #[macro_use]
 mod console;
 mod lang_items;
